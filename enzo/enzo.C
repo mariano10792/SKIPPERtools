@@ -85,7 +85,7 @@ int processCommandLineArgs(const int argc, char *argv[], bool &dense, int &halo)
     return 0;
 }
 
-int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hitSumm){
+int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hitSumm, vector<Int_t> &masks){
 
 	readEvents.Restart();
 	TTreeReaderValue<Int_t> xMin(readEvents, "xMin");
@@ -95,13 +95,15 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 	TTreeReaderValue<Int_t> yMax(readEvents, "yMax");
 	TTreeReaderArray<Int_t> yPix(readEvents, "yPix");
 	TTreeReaderValue<Int_t> ohdu(readEvents, "ohdu");
+	// TTreeReaderValue<Int_t> ene(readEvents, "nSavedPix");
+	// TTreeReaderValue<Float_t> xBary(readEvents, "xBary");
+	// TTreeReaderValue<Float_t> yBary(readEvents, "yBary");
 	TTreeReaderArray<Float_t> ePix(readEvents, "ePix");
 	
 	
 
 	// I need a zombie tree so the Aux and the original don't point to the same address when their TTreeReaders are iterated (see Documentation of CopyTree)
 	TTree* hitSummZombie = nullptr;
-	// hitSummZombie = hitSumm->CopyTree(("ohdu=="+std::to_string(hdu)).c_str());
 	hitSummZombie = hitSumm->CopyTree("");
 	hitSummZombie->SetName("hitSummZombie");
 	hitSummZombie->SetBranchStatus("*",1);
@@ -120,25 +122,98 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 
 
 	Int_t booleanVal;
+	Int_t sum;
 	TBranch *booleanBranch = hitSumm->Branch("boolean",&booleanVal,"boolean/I");
+	TBranch *sumBranch = hitSumm->Branch("NEvent",&sum,"NEvent/I");
 	int j1=0;
 	
-
+	// std::vector<int> area(3100*470, 0);
+	int counter=0;
 	while (readEvents.Next()) {
 		
-		// if (*ohdu!=hdu) {j1++;continue;}
+		std::vector<int> area(3100*470*2, 0);
+		// std::vector<int> equis(3100*470*2, 0);
+		// std::vector<int> ygriega(3100*470*2, 0);
 		compareEvents.Restart();
 		hitSumm->GetEntry(j1);
 		booleanVal=1;
-		if (*xMin<10+halo || *xMax>450-halo || *yMin<halo || *yMax >NROW-halo){booleanVal=0; booleanBranch->Fill(); j1++; continue;}
+		if (*xMin<10+halo || *xMax>450-halo || *yMin<halo || *yMax >NROW-halo){booleanVal=0; sum=0; booleanBranch->Fill(); sumBranch->Fill(); j1++; continue;}
 		// if (*xMin<10+halo || *xMax>450-halo || *yMin<halo || *yMax >NROW-halo || !(*xMin>400+halo || *xMax<250-halo || *yMax<1000-halo)){booleanVal=0; booleanBranch->Fill(); j1++; continue;} #new data
 		
-		
-		if (!dense){
+		// cout << "------------ New Event -------------" << endl;
+
+		// cout << "size = " << xPix.GetSize() << endl;
+		// int presum=std::accumulate(area.begin(), area.end(), 0);
+		// cout <<  "presum = "<< presum << endl;
+		for (int i = 0, ni =  xPix.GetSize(); i < ni; ++i) {
+			if (booleanVal==0){cout << "I broke." << endl; break;}
 			
+			//halo radius for a given pixelmak
+			int xStart = max(0,xPix[i]-halo);
+			int xEnd = min(470-1,xPix[i]+halo); 
+			int yStart = max(0,yPix[i]-halo);
+			int yEnd = min(3100-1,yPix[i]+halo);
+
+
+			
+			// if (i==0){
+			// 	cout <<  "(xStart,yStart) = ("<< xStart <<","<< yStart << ")" << endl;
+			// 	cout <<  "(xPix[0],yPix[0]) = ("<< xPix[0] <<","<< yPix[0] << ")" << endl;
+			// 	cout <<  "(xEnd,yEnd) = ("<< xEnd <<","<< yEnd << ")" << endl;	
+			// }
+
+			// if (j1==42){ cout << "CUARENTA Y DOOOOOOOOOS " << endl;}
+			for (int x = xStart; x <= xEnd; ++x){
+				
+				for (int y = yStart; y <= yEnd; ++y){
+					// if (x==xStart && y==yStart && i==0){
+					// 	cout <<  "(xStart,yStart) = ("<< xStart <<","<< yStart << ")" << endl;
+					// 	cout <<  "(xEnd,yEnd) = ("<< xEnd <<","<< yEnd << ")" << endl;				
+					// }
+					// cout << j1 << endl;
+					// if (j1==42){cout << masks[(x)+(y)*470+470*3100*((*ohdu)-1)] << endl;}
+					
+					if(!(masks[(x)+(y)*470+470*3100*((*ohdu)-1)] & (1+2+4+16+128+512+1024))){
+						area[(x)+(y)*470+470*3100*((*ohdu)-1)]=1;
+						// equis[(x)+(y)*470+470*3100*((*ohdu)-1)]=x;
+						// ygriega[(x)+(y)*470+470*3100*((*ohdu)-1)]=y;
+						// cout << "hola" << endl;
+					}
+				}
+			}
+		}
+		sum=std::accumulate(area.begin(), area.end(), 0);
+		// float xCen;
+		// float yCen;
+		// if (sum!=0){
+		// 	xCen=std::accumulate(equis.begin(), equis.end(), 0)/sum;
+		// 	yCen=std::accumulate(ygriega.begin(), ygriega.end(), 0)/sum;
+		// }else{
+		// 	xCen=555555;
+		// 	yCen=555555;
+		// }
+		
+		// int xCen=((*xMin)+(*xMax))/2;
+		// int yCen=((*yMin)+(*yMax))/2;
+		// cout <<  "j1 = "<< j1 << endl;
+		// cout <<  "(xCen,yCen) = ("<< xCen <<","<< yCen << ")" << endl;
+
+		// cout <<  "sum = "<< sum << endl;
+		
+		// int sum=std::accumulate(area.begin(), area.end(), 0);
+		// 			cout <<  sum << endl;
+
+
+
+
+
+
+		compareEvents.Restart();
+		if (!dense){
 			for (int i = 0, ni =  xPix.GetSize(); i < ni; ++i) {
 				int j2=0;
-				while (compareEvents.Next()) {
+
+				while (compareEvents.Next()){
 					if (j1==j2 or *ohdu!=*ohdu2){j2++; continue;}
 					for (int k = 0, nk =  xPix2.GetSize(); k < nk; ++k) {
 						if (pow(pow(xPix[i]-xPix2[k],2)+pow(yPix[i]-yPix2[k],2),0.5)<2*halo && j1!=j2){
@@ -147,23 +222,36 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 						}
 					}		
 				j2++;
-				if (booleanVal==0){break;}
+				if (booleanVal==0){break;} //breaks the while
 				}
 			if (booleanVal==0){break;}
 			}
 		}
 		booleanBranch->Fill();
-		
+		sumBranch->Fill();
 		j1++;
 	}
 	delete hitSummAux;
 	return 0;
 }
 
-int Compute1eEvents(TFile* &file, TFile* &outfile, vector<Int_t> &x1e, vector<Int_t> &y1e, vector<Double_t> &ePix1e, vector<Int_t> &ohdu1e, vector<Int_t> &mask1e, const string &cutsPix){
+int Compute1eEvents(TFile* &file, TFile* &outfile, vector<Int_t> &x1e, vector<Int_t> &y1e, vector<Double_t> &ePix1e, vector<Int_t> &ohdu1e, vector<Int_t> &mask1e, const string &cutsPix, vector<Int_t> &masks){
 
 	TTree* dataPix = nullptr;	
 	file->GetObject("calPixTree",dataPix);
+	dataPix->SetName("dataPix");
+	dataPix->SetBranchStatus("*",1);
+	TTreeReader readCalPixTree("dataPix", file);
+	TTreeReaderValue<Int_t> maskVal(readCalPixTree, "mask");
+	TTreeReaderValue<Int_t> xVal(readCalPixTree, "x");
+	TTreeReaderValue<Int_t> yVal(readCalPixTree, "y");
+	TTreeReaderValue<Int_t> ohduVal(readCalPixTree, "ohdu");
+	while (readCalPixTree.Next()) {
+		if (*ohduVal<3){
+			masks[(*xVal)+(*yVal)*470+470*3100*((*ohduVal)-1)]=*maskVal;
+		}
+	}
+
 	TTree* dataPixSel = nullptr;
 	dataPixSel = dataPix->CopyTree(cutsPix.c_str());
 	dataPixSel->SetName("dataPixSel");
@@ -185,6 +273,7 @@ int Compute1eEvents(TFile* &file, TFile* &outfile, vector<Int_t> &x1e, vector<In
 		ePix1e.push_back(*epix1electron);
 	}
 
+	delete dataPix;
 	delete dataPixSel;
 	return 0;	
 }
@@ -316,7 +405,7 @@ int analyseHalo(const string &infile, const int &halo, const bool &dense){
 	TTree* data = nullptr;
 	file->GetObject("hitSumm",data);
 	
-
+	//set file name
 	std::vector<std::string> words;split(infile,words,'/');
 	std::string outfilename="output_"+words.back();
 	TFile *outfile = new TFile(outfilename.c_str(),"RECREATE");
@@ -336,8 +425,13 @@ int analyseHalo(const string &infile, const int &halo, const bool &dense){
 	NCOLchar=((TLeafC *) config->GetBranch("NCOL")->GetLeaf("string"))->GetValueString();
 	istringstream buffer2(NCOLchar); int NCOL; buffer2 >> NCOL; 
 
-	int CCD[NCOL*NROW] = {0};
-	std::fill_n(CCD, NCOL* NROW, 0);
+	// int CCD[NCOL*NROW] = {0};
+	// std::fill_n(CCD, NCOL* NROW, 0);
+
+	//create matrix of mask
+	vector<Int_t> masks(NROW*NCOL*2, 0); //2 is # of hdu's
+	cout << NROW << endl;
+	cout << NCOL << endl;
 
 	if (NROW>3072){NROW=3072;}
 	
@@ -355,40 +449,40 @@ int analyseHalo(const string &infile, const int &halo, const bool &dense){
 	hitSumm->SetBranchStatus("*",1);
 	// create TTreeReader for that Tree
 	TTreeReader readEvents("hitSumm", outfile);
-	// for (int hdu=2; hdu<3; hdu++) {
-
-		// int hdu=2;
-		// Select events (tracks)
-		cout << "Cut for tracks = " << cutsEvents << "\n"<<endl;
-		cutEvents(file, outfile, readEvents, hitSumm);
 
 
-		// Select 1e- events
-		vector<Int_t>    x1e;
-		vector<Int_t>    y1e;
-		
-		vector<Double_t>    ePix1e;
-		vector<Int_t>    ohdu1e;
-		vector<Int_t>    mask1e;
-		
-		// cutsPix.pop_back();
-		// char charhdu = hdu+48; //cast int to char
-		// cutsPix.push_back(charhdu);
-		
-		cout << "Cut for 1e events = " << cutsPix <<"\n"<<endl;
-		Compute1eEvents(file, outfile, x1e, y1e, ePix1e, ohdu1e,mask1e, cutsPix);
 
-		// writes tree with new branches
-		WriteTree(readEvents, hitSumm, x1e, y1e, ePix1e,ohdu1e,mask1e);
-		x1e.clear();
-		y1e.clear();
-		ePix1e.clear();
-			
 	
-	// }
-	// outfile->Write();
-	//Clone config tree (skViewer needs it)
 
+	
+
+	// Select 1e- events
+	vector<Int_t>    x1e;
+	vector<Int_t>    y1e;
+	vector<Double_t>    ePix1e;
+	vector<Int_t>    ohdu1e;
+	vector<Int_t>    mask1e;
+	// cutsPix.pop_back();
+	// char charhdu = hdu+48; //cast int to char
+	// cutsPix.push_back(charhdu);
+	cout << "Cut for 1e events = " << cutsPix <<"\n"<<endl;
+	Compute1eEvents(file, outfile, x1e, y1e, ePix1e, ohdu1e,mask1e, cutsPix,masks);
+
+	// Select events (tracks)
+	cout << "Cut for tracks = " << cutsEvents << "\n"<<endl;
+	cutEvents(file, outfile, readEvents, hitSumm, masks);
+
+
+	// writes tree with new branches
+	WriteTree(readEvents, hitSumm, x1e, y1e, ePix1e,ohdu1e,mask1e);
+	x1e.clear();
+	y1e.clear();
+	ePix1e.clear();
+	
+	
+	
+
+	//Clone config tree (skViewer needs it)
 	TTree* imgParTreeConfig = nullptr;
 	file->GetObject("imgParTree",imgParTreeConfig);
 	TTree* imgParTree = nullptr;
@@ -396,14 +490,17 @@ int analyseHalo(const string &infile, const int &halo, const bool &dense){
 	imgParTree->SetName("imgParTree");
 	imgParTree->SetBranchStatus("*",1);
 	delete imgParTreeConfig;
-	//fill imgParTree with halo size
+
+	
+	//add halo size to imgParTree
 	int haloVal;
 	TBranch *haloBranch = imgParTree->Branch("halo",&haloVal,"halo/I");
 	haloVal=halo;
 	haloBranch->Fill();
-
+	
 	outfile->Write();
 	outfile->Close();
+	
 	return status;
 }
 
@@ -423,4 +520,5 @@ int returnCode = processCommandLineArgs( argc, argv, dense, halo); //processing 
 int status = analyseHalo(infile, halo, dense);
 
 return 0;
+cout << "hola" <<endl;
 }    // end
