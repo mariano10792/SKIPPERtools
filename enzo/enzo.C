@@ -79,7 +79,7 @@ int processCommandLineArgs(const int argc, char *argv[], bool &dense, int &halo)
 				// cout << "\nArgument halo = " <<halo << endl;
                 //break;
             default: /* '?' */
-                return 0;
+                return 1;
         }
     }
     return 0;
@@ -120,6 +120,7 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 	TTreeReaderValue<Int_t> ohdu2(compareEvents, "ohdu");
 	delete hitSummZombie;
 
+	
 
 	Int_t booleanVal;
 	Int_t sum;
@@ -131,17 +132,14 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 	int counter=0;
 	while (readEvents.Next()) {
 		
-		std::vector<int> area(3100*470*2, 0);
-		// std::vector<int> equis(3100*470*2, 0);
-		// std::vector<int> ygriega(3100*470*2, 0);
+		std::vector<int> area(NROW*NCOL*2, 0);
+		// std::vector<int> equis(NROW*NCOL*2, 0);
+		// std::vector<int> ygriega(NROW*NCOL*2, 0);
 		compareEvents.Restart();
 		hitSumm->GetEntry(j1);
 		booleanVal=1;
 		if (*xMin<10+halo || *xMax>450-halo || *yMin<halo || *yMax >NROW-halo){booleanVal=0; sum=0; booleanBranch->Fill(); sumBranch->Fill(); j1++; continue;}
-		// if (*xMin<10+halo || *xMax>450-halo || *yMin<halo || *yMax >NROW-halo || !(*xMin>400+halo || *xMax<250-halo || *yMax<1000-halo)){booleanVal=0; booleanBranch->Fill(); j1++; continue;} #new data
 		
-		// cout << "------------ New Event -------------" << endl;
-
 		// cout << "size = " << xPix.GetSize() << endl;
 		// int presum=std::accumulate(area.begin(), area.end(), 0);
 		// cout <<  "presum = "<< presum << endl;
@@ -150,17 +148,12 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 			
 			//halo radius for a given pixelmak
 			int xStart = max(0,xPix[i]-halo);
-			int xEnd = min(470-1,xPix[i]+halo); 
+			int xEnd = min(NCOL-1,xPix[i]+halo); 
 			int yStart = max(0,yPix[i]-halo);
-			int yEnd = min(3100-1,yPix[i]+halo);
+			int yEnd = min(NROW-1,yPix[i]+halo);
 
 
 			
-			// if (i==0){
-			// 	cout <<  "(xStart,yStart) = ("<< xStart <<","<< yStart << ")" << endl;
-			// 	cout <<  "(xPix[0],yPix[0]) = ("<< xPix[0] <<","<< yPix[0] << ")" << endl;
-			// 	cout <<  "(xEnd,yEnd) = ("<< xEnd <<","<< yEnd << ")" << endl;	
-			// }
 
 			// if (j1==42){ cout << "CUARENTA Y DOOOOOOOOOS " << endl;}
 			for (int x = xStart; x <= xEnd; ++x){
@@ -173,8 +166,8 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 					// cout << j1 << endl;
 					// if (j1==42){cout << masks[(x)+(y)*470+470*3100*((*ohdu)-1)] << endl;}
 					
-					if(!(masks[(x)+(y)*470+470*3100*((*ohdu)-1)] & (1+2+4+16+128+512+1024))){
-						area[(x)+(y)*470+470*3100*((*ohdu)-1)]=1;
+					if(!(masks[(x)+(y)*NCOL+NCOL*NROW*((*ohdu)-1)] & (1+2+4+16+128+512+1024))){
+						area[(x)+(y)*NCOL+NCOL*NROW*((*ohdu)-1)]=1;
 						// equis[(x)+(y)*470+470*3100*((*ohdu)-1)]=x;
 						// ygriega[(x)+(y)*470+470*3100*((*ohdu)-1)]=y;
 						// cout << "hola" << endl;
@@ -183,25 +176,6 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 			}
 		}
 		sum=std::accumulate(area.begin(), area.end(), 0);
-		// float xCen;
-		// float yCen;
-		// if (sum!=0){
-		// 	xCen=std::accumulate(equis.begin(), equis.end(), 0)/sum;
-		// 	yCen=std::accumulate(ygriega.begin(), ygriega.end(), 0)/sum;
-		// }else{
-		// 	xCen=555555;
-		// 	yCen=555555;
-		// }
-		
-		// int xCen=((*xMin)+(*xMax))/2;
-		// int yCen=((*yMin)+(*yMax))/2;
-		// cout <<  "j1 = "<< j1 << endl;
-		// cout <<  "(xCen,yCen) = ("<< xCen <<","<< yCen << ")" << endl;
-
-		// cout <<  "sum = "<< sum << endl;
-		
-		// int sum=std::accumulate(area.begin(), area.end(), 0);
-		// 			cout <<  sum << endl;
 
 
 
@@ -248,7 +222,7 @@ int Compute1eEvents(TFile* &file, TFile* &outfile, vector<Int_t> &x1e, vector<In
 	TTreeReaderValue<Int_t> ohduVal(readCalPixTree, "ohdu");
 	while (readCalPixTree.Next()) {
 		if (*ohduVal<3){
-			masks[(*xVal)+(*yVal)*470+470*3100*((*ohduVal)-1)]=*maskVal;
+			masks[(*xVal)+(*yVal)*NCOL+NCOL*NROW*((*ohduVal)-1)]=*maskVal;
 		}
 	}
 
@@ -423,7 +397,7 @@ int analyseHalo(const string &infile, const int &halo, const bool &dense){
 	istringstream buffer(NROWchar); buffer >> NROW; 
 	char* NCOLchar; //NCOL is not actually used
 	NCOLchar=((TLeafC *) config->GetBranch("NCOL")->GetLeaf("string"))->GetValueString();
-	istringstream buffer2(NCOLchar); int NCOL; buffer2 >> NCOL; 
+	istringstream buffer2(NCOLchar); buffer2 >> NCOL; 
 
 	// int CCD[NCOL*NROW] = {0};
 	// std::fill_n(CCD, NCOL* NROW, 0);
