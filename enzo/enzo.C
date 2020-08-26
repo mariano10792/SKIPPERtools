@@ -1,24 +1,11 @@
-// Autor: Dario Rodrigues
-// Fecha: 6 de septiembre de 2019 
-
-/*
-Código escrito para simular el anillo de fotones entrelazados
-generados por SPDC sobre la superficie de un CCD.
-El ejecutable requiere cuatro numeros, a saber:
-./ring.exe N DC R S
-N es el numero total de pares de fotones entrelazados simulados
-DC es el numero total de eventos de corriente oscura sobre el CCD
-R es el radio del anillo
-S es el sigma de una gaussiana que describe el ancho del anillo
-Ejemplo: ./ring.exe 50000 10000 2000 200
-
-*/
+// Autor: Mariano Cababie
 
 
  
 
 #include <random>
-#include <ctime>
+#include <sys/time.h>
+#include <time.h>
 #include <cstdlib>
 #include "fitsio.h"
 #include <stdio.h>
@@ -68,18 +55,18 @@ bool dense;
 int processCommandLineArgs(const int argc, char *argv[], bool &dense, int &halo){
 
     int opt=0;
-    while ( (opt = getopt(argc, argv, "d:h")) != -1) {
+    while ( (opt = getopt(argc, argv, "h:d")) != -1) {
         switch (opt) {
             case 'd':
 				dense=true;
-				// cout << kGreen << "\n\nEnzo will use dense configuration. If you are seeing this then your file must have lots of High Energy Events. \n\n" << endl;
-                //break;
+				cout << "\n\nEnzo will use dense configuration. If you are seeing this then your file must have lots of High Energy Events." << endl;
+                break;
 			case 'h':
+				cout << "\n\nArgument halo = " <<atoi(optarg) << endl;
 				halo = atoi(optarg);
-				// cout << "\nArgument halo = " <<halo << endl;
-                //break;
+                break;
             default: /* '?' */
-                return 1;
+                return 0;
         }
     }
     return 0;
@@ -95,9 +82,6 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 	TTreeReaderValue<Int_t> yMax(readEvents, "yMax");
 	TTreeReaderArray<Int_t> yPix(readEvents, "yPix");
 	TTreeReaderValue<Int_t> ohdu(readEvents, "ohdu");
-	// TTreeReaderValue<Int_t> ene(readEvents, "nSavedPix");
-	// TTreeReaderValue<Float_t> xBary(readEvents, "xBary");
-	// TTreeReaderValue<Float_t> yBary(readEvents, "yBary");
 	TTreeReaderArray<Float_t> ePix(readEvents, "ePix");
 	
 	
@@ -133,16 +117,12 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 	while (readEvents.Next()) {
 		
 		std::vector<int> area(NROW*NCOL*2, 0);
-		// std::vector<int> equis(NROW*NCOL*2, 0);
-		// std::vector<int> ygriega(NROW*NCOL*2, 0);
 		compareEvents.Restart();
 		hitSumm->GetEntry(j1);
 		booleanVal=1;
-		if (*xMin<10+halo || *xMax>450-halo || *yMin<halo || *yMax >NROW-halo){booleanVal=0; sum=0; booleanBranch->Fill(); sumBranch->Fill(); j1++; continue;}
+		if (*xMin<10+halo || *xMax>NCOL-halo || *yMin<halo || *yMax >NROW-halo){booleanVal=0; sum=0; booleanBranch->Fill(); sumBranch->Fill(); j1++; continue;}
+		// if (*xMin<10+halo || *xMax>450-halo || *yMin<halo || *yMax >NROW-halo || !(*xMin>400+halo || *xMax<250-halo || *yMax<1000-halo)){booleanVal=0; booleanBranch->Fill(); j1++; continue;} #module4 on excesses
 		
-		// cout << "size = " << xPix.GetSize() << endl;
-		// int presum=std::accumulate(area.begin(), area.end(), 0);
-		// cout <<  "presum = "<< presum << endl;
 		for (int i = 0, ni =  xPix.GetSize(); i < ni; ++i) {
 			if (booleanVal==0){cout << "I broke." << endl; break;}
 			
@@ -153,40 +133,22 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 			int yEnd = min(NROW-1,yPix[i]+halo);
 
 
-			
-
-			// if (j1==42){ cout << "CUARENTA Y DOOOOOOOOOS " << endl;}
-			for (int x = xStart; x <= xEnd; ++x){
-				
-				for (int y = yStart; y <= yEnd; ++y){
-					// if (x==xStart && y==yStart && i==0){
-					// 	cout <<  "(xStart,yStart) = ("<< xStart <<","<< yStart << ")" << endl;
-					// 	cout <<  "(xEnd,yEnd) = ("<< xEnd <<","<< yEnd << ")" << endl;				
-					// }
-					// cout << j1 << endl;
-					// if (j1==42){cout << masks[(x)+(y)*470+470*3100*((*ohdu)-1)] << endl;}
-					
+		
+			for (int x = xStart; x <= xEnd; ++x){			
+				for (int y = yStart; y <= yEnd; ++y){			
 					if(!(masks[(x)+(y)*NCOL+NCOL*NROW*((*ohdu)-1)] & (1+2+4+16+128+512+1024))){
 						area[(x)+(y)*NCOL+NCOL*NROW*((*ohdu)-1)]=1;
-						// equis[(x)+(y)*470+470*3100*((*ohdu)-1)]=x;
-						// ygriega[(x)+(y)*470+470*3100*((*ohdu)-1)]=y;
-						// cout << "hola" << endl;
+
 					}
 				}
 			}
 		}
-		sum=std::accumulate(area.begin(), area.end(), 0);
-
-
-
-
-
-
+		sum=std::accumulate(area.begin(), area.end(), 0);		
+		
 		compareEvents.Restart();
 		if (!dense){
 			for (int i = 0, ni =  xPix.GetSize(); i < ni; ++i) {
 				int j2=0;
-
 				while (compareEvents.Next()){
 					if (j1==j2 or *ohdu!=*ohdu2){j2++; continue;}
 					for (int k = 0, nk =  xPix2.GetSize(); k < nk; ++k) {
@@ -195,12 +157,18 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 							break;
 						}
 					}		
-				j2++;
-				if (booleanVal==0){break;} //breaks the while
+					j2++;
+					if (booleanVal==0){break;} //breaks the while
 				}
-			if (booleanVal==0){break;}
+				if (booleanVal==0){break;}
 			}
 		}
+
+
+
+
+
+
 		booleanBranch->Fill();
 		sumBranch->Fill();
 		j1++;
@@ -485,6 +453,11 @@ int analyseHalo(const string &infile, const int &halo, const bool &dense){
 /////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]){
 
+
+time_t start,end;
+double dif;
+time (&start);
+
 std::string infile(argv[1]);
 dense=false; //global variable
 halo=30; //global variable
@@ -493,6 +466,13 @@ int returnCode = processCommandLineArgs( argc, argv, dense, halo); //processing 
 
 int status = analyseHalo(infile, halo, dense);
 
+
+time (&end);
+dif = difftime (end,start);
+
+cout << "---------------------------------" <<endl;
+cout << "Took me " << dif << " seconds.\n\n" << endl;
+cout << "---------------------------------" <<endl;
 return 0;
-cout << "hola" <<endl;
+
 }    // end
