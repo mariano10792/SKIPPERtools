@@ -124,8 +124,8 @@ int cutEvents(TFile* &file,TFile* &outfile, TTreeReader &readEvents, TTree* &hit
 	
 
 
-	std::string cutsEvents ="e>=100 && xVar>0 && yVar>0 && xMin>"+std::to_string(CCDNPRES)+" && xMax<="+std::to_string(CCDNCOL/2+CCDNPRES)+" && yMin>0 && yMax<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && ohdu<3";
-	std::string cutsPix="ePix>0.63 && ePix<1.5 && !(mask & (1+4+16+128+512+1024)) && x>"+std::to_string(CCDNPRES)+" && x<="+std::to_string(CCDNCOL/2+CCDNPRES)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && ohdu<3";
+	std::string cutsEvents ="e>=100 && xVar>0 && yVar>0 && xMin>"+std::to_string(CCDNPRES)+" && xMax<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && yMin>0 && yMax<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && ohdu<3";
+	std::string cutsPix="ePix>0.63 && ePix<1.5 && !(mask & (1+4+16+128+512+1024)) && x>"+std::to_string(CCDNPRES)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && ohdu<3";
 
 
 
