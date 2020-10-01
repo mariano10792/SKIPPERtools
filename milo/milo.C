@@ -94,15 +94,6 @@ int computeFakeImages(TFile* &file, vector<Int_t> &ohdu1e, TTree* &dataPix, vect
                     continue;
                 }
 
-
-
-                if (masks[(x)+(y)*NCOL+NCOL*NROW*((ohdu)-1)]==76){
-                    cout << "x = (" << x << ","<< y<< ")"<< endl;
-                    cout << "electrons = " << 209.699833853*electrons[x+y*NCOL+NCOL*NROW*(ohdu-1)] << endl;
-                    cout << "mask = " << masks[x+y*NCOL+NCOL*NROW*((ohdu)-1)] << endl;
-                    cout << "ohdu = " << ohdu << endl;
-                }
-                //cout << "mask = " << masks[(x)+(y)*NCOL+NCOL*NROW*((ohdu)-1)] << endl;
                 xfakeAux.push_back(x); yfakeAux.push_back(y); ohdufakeAux.push_back(ohdu*images+j); maskfakeAux.push_back(masks[(x)+(y)*NCOL+NCOL*NROW*((ohdu)-1)]);
                 ++i;
             }
@@ -113,7 +104,6 @@ int computeFakeImages(TFile* &file, vector<Int_t> &ohdu1e, TTree* &dataPix, vect
             maskfake.insert(maskfake.end(), maskfakeAux.begin(), maskfakeAux.end());
         }
     }
-    cout << xfake.size() << endl;
     return 0;
 }
 
@@ -158,35 +148,31 @@ int compute1eEvents(TFile* &file, TFile* &outfile, Int_t N, vector<Int_t> &x1e, 
         distance1e.push_back(*distance1electron);
 	}
 
-    N=x1e.size()*(images+1);
+    N=x1e.size();
 
 
     int a=0;
     vector<Int_t> xfake; vector<Int_t> yfake; vector<Int_t> ohdufake; vector<Int_t> maskfake;
-    if (fake==true){computeFakeImages(file, ohdu1e, dataPix, xfake, yfake, ohdufake, maskfake);}
-    
-    cout << x1e.size() << endl;
+    if (fake==true){
 
-    //creat auxiliar vectors to complete fake entries
-    vector<Int_t> runIDfake(xfake.size(), RUNID);
-    vector<Double_t> ePixfake(xfake.size(), 1);
-    vector<Float_t> distancefake(xfake.size(), 1);
+        N=x1e.size()*(images+1);
+        
+        computeFakeImages(file, ohdu1e, dataPix, xfake, yfake, ohdufake, maskfake);
 
+        //creat auxiliar vectors to complete fake entries
+        vector<Int_t> runIDfake(xfake.size(), RUNID);
+        vector<Double_t> ePixfake(xfake.size(), 1);
+        vector<Float_t> distancefake(xfake.size(), 555);
 
-    x1e.insert(x1e.end(), xfake.begin(), xfake.end());
-    y1e.insert(y1e.end(), yfake.begin(), yfake.end());
-    ohdu1e.insert(ohdu1e.end(), ohdufake.begin(), ohdufake.end());
-    mask1e.insert(mask1e.end(), maskfake.begin(), maskfake.end());
-    runID1e.insert(runID1e.end(), runIDfake.begin(), runIDfake.end());
-    ePix1e.insert(ePix1e.end(), ePixfake.begin(), ePixfake.end());
-    distance1e.insert(distance1e.end(), distancefake.begin(), distancefake.end());
-
-    
-    cout << ohdufake.size() << endl;
-    cout << maskfake.size() << endl;
-    cout << ohdu1e.size() << endl;
-    cout << mask1e.size() << endl;
-    
+        // append to *1e vectors
+        x1e.insert(x1e.end(), xfake.begin(), xfake.end());
+        y1e.insert(y1e.end(), yfake.begin(), yfake.end());
+        ohdu1e.insert(ohdu1e.end(), ohdufake.begin(), ohdufake.end());
+        mask1e.insert(mask1e.end(), maskfake.begin(), maskfake.end());
+        runID1e.insert(runID1e.end(), runIDfake.begin(), runIDfake.end());
+        ePix1e.insert(ePix1e.end(), ePixfake.begin(), ePixfake.end());
+        distance1e.insert(distance1e.end(), distancefake.begin(), distancefake.end());
+    }
     imgSumm.SetBranchAddress("x1e",&x1e[0]);
 	imgSumm.SetBranchAddress("y1e",&y1e[0]);
     imgSumm.SetBranchAddress("ePix1e",&ePix1e[0]);
@@ -196,15 +182,9 @@ int compute1eEvents(TFile* &file, TFile* &outfile, Int_t N, vector<Int_t> &x1e, 
     imgSumm.SetBranchAddress("distance1e",&distance1e[0]);
     imgSumm.Fill();
     imgSumm.Write();
-
-    
     
     delete dataPix;
     delete dataPixSel;
-
-
-
-
     return 0;
 }
 
@@ -223,8 +203,10 @@ int createOtherTree(TFile* &file, TFile* &outfile, const string &cutsPix, const 
 	otherTreeAux->SetBranchStatus("*",1);
     TTreeReader readOtherTreeAux("otherTreeAux", outfile);
     TTreeReaderValue<Int_t> maskAux(readOtherTreeAux, "mask");
+    TTreeReaderValue<Int_t> ohduAux(readOtherTreeAux, "ohdu");
     TTreeReaderValue<Float_t> distanceAux(readOtherTreeAux, "distance");
     vector<Int_t>    masksOther;
+    vector<Int_t>    ohdusOther;
     vector<Float_t>    distancesOther;
     vector<Int_t>    runIDOther;
     int N;
@@ -232,11 +214,13 @@ int createOtherTree(TFile* &file, TFile* &outfile, const string &cutsPix, const 
     TTree otherTree("otherTree","otherTree");
     otherTree.Branch("N",&N,"N/I");
     otherTree.Branch("mask",&masksOther[0],"mask[N]/I");
+    otherTree.Branch("ohdu",&ohdusOther[0],"ohdu[N]/I");
     otherTree.Branch("distance",&distancesOther[0],"distance[N]/F");
     otherTree.Branch("runID",&runIDOther[0],"runID[N]/I");
 
     while (readOtherTreeAux.Next()) {
         masksOther.push_back(*maskAux);
+        ohdusOther.push_back(*ohduAux);
 		distancesOther.push_back(*distanceAux);
         runIDOther.push_back(RUNID);
     }
@@ -244,6 +228,7 @@ int createOtherTree(TFile* &file, TFile* &outfile, const string &cutsPix, const 
     N=masksOther.size();
 
     otherTree.SetBranchAddress("mask",&masksOther[0]);
+    otherTree.SetBranchAddress("ohdu",&ohdusOther[0]);
     otherTree.SetBranchAddress("distance",&distancesOther[0]);
     otherTree.SetBranchAddress("runID",&runIDOther[0]);
 
@@ -267,8 +252,14 @@ int analyseImage(const string &infile, const int &halo){
 
     //set file name
 	std::vector<std::string> words;split(infile,words,'/');
-	std::string outfilename="milo_"+words.back();
-	TFile *outfile = new TFile(outfilename.c_str(),"RECREATE");
+    std::string outfilename;
+    if (fake==true){
+	    outfilename="fakemilo_"+words.back();
+    }else{
+        outfilename="milo_"+words.back();
+    }
+	
+    TFile *outfile = new TFile(outfilename.c_str(),"RECREATE");
 
     cout << "\nProcessing file " << words.back() << endl;
 
@@ -282,12 +273,15 @@ int analyseImage(const string &infile, const int &halo){
 	char* CCDNPRESchar;CCDNPRESchar=((TLeafC *) config->GetBranch("CCDNPRES")->GetLeaf("string"))->GetValueString();istringstream buffer5(CCDNPRESchar); buffer5 >> CCDNPRES; 
     char* NBINROWchar;NBINROWchar=((TLeafC *) config->GetBranch("NBINROW")->GetLeaf("string"))->GetValueString();istringstream buffer6(NBINROWchar); buffer6 >> NBINROW; 
 	char* NBINCOLchar;NBINCOLchar=((TLeafC *) config->GetBranch("NBINCOL")->GetLeaf("string"))->GetValueString();istringstream buffer7(NBINCOLchar); buffer7 >> NBINCOL; 
+    // NBINCOL=1;
+    // NBINROW=1;
     char* RUNIDchar;RUNIDchar=((TLeafC *) config->GetBranch("RUNID")->GetLeaf("string"))->GetValueString();istringstream buffer8(RUNIDchar); buffer8 >> RUNID; 
 
 
-    std::string cutsPix="ePix>0.63 && ePix<1.5 && !(mask & (1+4+16+128+512+1024)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==2 || ohdu==3)";
+    
+    std::string cutsPix="ePix>0.63 && ePix<2.5 && !(mask & (1+4+16+128+256+512+1024+4096)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==1 || ohdu==2)";
 
-    std::string cutsEmptyPix="!(mask & (1+2+4+16+128+512+1024)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==2 || ohdu==3)";
+    std::string cutsEmptyPix="!(mask & (1+4+16+128+256+512+1024+4096)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==1 || ohdu==2)";
     
     // Clone Tree
 	TTree* hitSumm = nullptr;
@@ -310,8 +304,9 @@ int analyseImage(const string &infile, const int &halo){
 
     compute1eEvents(file, outfile, N, x1e, y1e, ePix1e, ohdu1e,mask1e, distance1e, runID1e, cutsPix, cutsEmptyPix);
 
-    createOtherTree(file,outfile, cutsPix, cutsEmptyPix);
-
+    if (fake==false){
+        createOtherTree(file,outfile, cutsPix, cutsEmptyPix);
+    }
     
     delete hitSumm;
     outfile->Write();
@@ -328,7 +323,7 @@ time (&start);
 
 std::string infile(argv[1]);
 halo=60; //global variable
-fake=true;
+fake=false;
 
 int status = analyseImage(infile, halo);
 
