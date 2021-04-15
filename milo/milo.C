@@ -54,58 +54,7 @@ int CCDNPRES;
 int RUNID;
 int halo;
 bool fake;
-int images=100;
 
-int computeFakeImages(TFile* &file, vector<Int_t> &ohdu1e, TTree* &dataPix, vector<Int_t> &xfake, vector<Int_t> &yfake, vector<Int_t> &ohdufake, vector<Int_t> &maskfake){
-
-    vector<Int_t> masks(NROW*NCOL*4, 0);
-    vector<Float_t> distances(NROW*NCOL*4, 0);
-    vector<Double_t> electrons(NROW*NCOL*4, 0);
-	TTreeReader readCalPixTree("dataPix", file);
-	TTreeReaderValue<Int_t> maskVal(readCalPixTree, "mask");
-	TTreeReaderValue<Int_t> xVal(readCalPixTree, "x");
-	TTreeReaderValue<Int_t> yVal(readCalPixTree, "y");
-    TTreeReaderValue<Double_t> eVal(readCalPixTree, "ePix");
-	TTreeReaderValue<Int_t> ohduVal(readCalPixTree, "ohdu");
-    TTreeReaderValue<Float_t> distanceVal(readCalPixTree, "distance");
-	while (readCalPixTree.Next()) {
-			masks[(*xVal)+(*yVal)*NCOL+NCOL*NROW*((*ohduVal)-1)]=*maskVal;
-            distances[(*xVal)+(*yVal)*NCOL+NCOL*NROW*((*ohduVal)-1)]=*distanceVal;
-            electrons[(*xVal)+(*yVal)*NCOL+NCOL*NROW*((*ohduVal)-1)]=*eVal;
-	}
-    vector<Int_t> N(4, 0);
-    for (int i=0; i<ohdu1e.size(); ++i){
-        N[ohdu1e[i]]+=1;    
-    }
-
-    int x; int y; 
-    vector<Int_t> xfakeAux; vector<Int_t> yfakeAux; vector<Int_t> ohdufakeAux; vector<Int_t> maskfakeAux;
-    TRandom3 *rndm=new TRandom3(0);
-    for (int ohdu=1; ohdu<5;++ohdu){
-        if (N[ohdu]==0){continue;}
-        int j=0;
-        while (j<images){
-            xfakeAux.clear(); yfakeAux.clear(); ohdufakeAux.clear(); maskfakeAux.clear();
-            int i =0;
-            while (i<N[ohdu]){
-                x=int(rndm->Uniform(CCDNPRES+2,(CCDNCOL/2+CCDNPRES)/NBINCOL));
-                y=int(rndm->Uniform(1,min(NROW,CCDNROW/(2*NBINROW))));
-                if((masks[(x)+(y)*NCOL+NCOL*NROW*((ohdu)-1)] & (1+2+4+16+128+512+1024)) && (distances[(x)+(y)*NCOL+NCOL*NROW*((ohdu)-1)]<halo)){
-                    continue;
-                }
-
-                xfakeAux.push_back(x); yfakeAux.push_back(y); ohdufakeAux.push_back(ohdu*images+j); maskfakeAux.push_back(masks[(x)+(y)*NCOL+NCOL*NROW*((ohdu)-1)]);
-                ++i;
-            }
-            j++;
-            xfake.insert(xfake.end(), xfakeAux.begin(), xfakeAux.end());
-            yfake.insert(yfake.end(), yfakeAux.begin(), yfakeAux.end());
-            ohdufake.insert(ohdufake.end(), ohdufakeAux.begin(), ohdufakeAux.end());
-            maskfake.insert(maskfake.end(), maskfakeAux.begin(), maskfakeAux.end());
-        }
-    }
-    return 0;
-}
 
 int compute1eEvents(TFile* &file, TFile* &outfile, Int_t N, vector<Int_t> &x1e, vector<Int_t> &y1e, vector<Double_t> &ePix1e, vector<Int_t> &ohdu1e, vector<Int_t> &mask1e, vector<Float_t> &distance1e, vector<Int_t> runID1e, const string &cutsPix, const string &cutsEmptyPix){
 
@@ -153,26 +102,6 @@ int compute1eEvents(TFile* &file, TFile* &outfile, Int_t N, vector<Int_t> &x1e, 
 
     int a=0;
     vector<Int_t> xfake; vector<Int_t> yfake; vector<Int_t> ohdufake; vector<Int_t> maskfake;
-    if (fake==true){
-
-        N=x1e.size()*(images+1);
-        
-        computeFakeImages(file, ohdu1e, dataPix, xfake, yfake, ohdufake, maskfake);
-
-        //creat auxiliar vectors to complete fake entries
-        vector<Int_t> runIDfake(xfake.size(), RUNID);
-        vector<Double_t> ePixfake(xfake.size(), 1);
-        vector<Float_t> distancefake(xfake.size(), 555);
-
-        // append to *1e vectors
-        x1e.insert(x1e.end(), xfake.begin(), xfake.end());
-        y1e.insert(y1e.end(), yfake.begin(), yfake.end());
-        ohdu1e.insert(ohdu1e.end(), ohdufake.begin(), ohdufake.end());
-        mask1e.insert(mask1e.end(), maskfake.begin(), maskfake.end());
-        runID1e.insert(runID1e.end(), runIDfake.begin(), runIDfake.end());
-        ePix1e.insert(ePix1e.end(), ePixfake.begin(), ePixfake.end());
-        distance1e.insert(distance1e.end(), distancefake.begin(), distancefake.end());
-    }
     imgSumm.SetBranchAddress("x1e",&x1e[0]);
 	imgSumm.SetBranchAddress("y1e",&y1e[0]);
     imgSumm.SetBranchAddress("ePix1e",&ePix1e[0]);
@@ -279,15 +208,21 @@ int analyseImage(const string &infile, const int &halo){
 
 
     
-    std::string cutsPix="ePix>0.63 && ePix<2.5 && !(mask & (1+4+16+128+256+512+1024+4096)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==1 || ohdu==2)";
+    std::string cutsPix="ePix>0.63 && ePix<2.5 && !(mask & (1+4+16+128+256+512+1024+4096)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==4 || ohdu==3 || ohdu==2 || ohdu==1)";
 
-    std::string cutsEmptyPix="!(mask & (1+4+16+128+256+512+1024+4096)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==1 || ohdu==2)";
+    std::string cutsEmptyPix="!(mask & (1+4+16+128+256+512+1024+4096)) && x>"+std::to_string(CCDNPRES+1)+" && x<="+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+" && y>0 && y<"+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+" && (ohdu==4 || ohdu==3 || ohdu==2 || ohdu==1)";
     
     // Clone Tree
-	TTree* hitSumm = nullptr;
-	hitSumm = data->CopyTree("");
-	hitSumm->SetName("hitSumm");
-	hitSumm->SetBranchStatus("*",1);
+	// TTree* hitSumm = nullptr;
+	// hitSumm = data->CopyTree("");
+	// hitSumm->SetName("hitSumm");
+	// hitSumm->SetBranchStatus("*",1);
+
+    // Clone configTree
+	TTree* headerTree_1 = nullptr;
+	headerTree_1 = config->CopyTree("");
+	headerTree_1->SetName("headerTree_1");
+	headerTree_1->SetBranchStatus("*",1);
 
 	// Select 1e- events
 	Int_t N;
@@ -304,11 +239,10 @@ int analyseImage(const string &infile, const int &halo){
 
     compute1eEvents(file, outfile, N, x1e, y1e, ePix1e, ohdu1e,mask1e, distance1e, runID1e, cutsPix, cutsEmptyPix);
 
-    if (fake==false){
-        createOtherTree(file,outfile, cutsPix, cutsEmptyPix);
-    }
+    createOtherTree(file,outfile, cutsPix, cutsEmptyPix);
+
     
-    delete hitSumm;
+    // delete hitSumm;
     outfile->Write();
 	outfile->Close();
 

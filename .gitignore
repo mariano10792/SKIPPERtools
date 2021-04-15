@@ -1,0 +1,23 @@
+# Folder of files #
+###################
+*files/
+*images/
+
+
+# Compiled source #
+###################
+*.o
+*.exe
+
+
+# Do not include fakeDC folder #
+################################
+*fakeDC/
+
+# correlation_simulator #
+###################
+/home/mariano/tools/SKIPPERtools/correlation_simulator/runSimulation.sh
+
+# correlation #
+###################
+runSimulation.sh

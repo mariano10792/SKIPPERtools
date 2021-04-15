@@ -43,6 +43,15 @@ int kmax=90;
 // int kmin=50;
 // int kmax=120;
 
+int NROW;
+int NCOL;
+int NBINROW;
+int NBINCOL;
+int CCDNCOL;
+int CCDNROW;
+int CCDNPRES;
+int RUNID;
+
 void otherLikelihoodTest(vector<Float_t> &sim, Float_t &Ratio){
   vector <Float_t> meanaux;
   vector <Float_t> ratio;
@@ -113,8 +122,13 @@ void CramerVonMisesTests(vector<Float_t> &sim, TH1D* &h3, vector <Float_t> &CkAu
 void miloAnalyzer(){
 
 
-  string fileName = "/mnt/mariano/MINOSnewfirmware/run3_NROW500_NBINROW2_NCOL240_NBINCOL2_EXPOSURE0/0/milo.root";
+  // string fileName = "/mnt/mariano/MINOSnewfirmware/run3_NROW500_NBINROW2_NCOL240_NBINCOL2_EXPOSURE0/0/milo.root";
   // string fileName = "/mnt/mariano/SNOLAB/0/milo.root";
+  
+  // string fileName = "/mnt/mariano/MINOSnewfirmware/2020-10-07_moduleC40C41/0exp8x8binning/nomodule/milo_hits_skp_moduleC40_41-ssc16_17-lta20_60_TEMP135K-run2_NROW65_NBINROW8_NCOL400_NBINCOL8_EXPOSURE0_CLEAR600_1_0.root";
+  // string fileName = "/mnt/mariano/MINOSnewfirmware/2020-10-07_moduleC40C41/0exp8x8binning/nomodule/milo_hits_skp_moduleC40_41-ssc16_17-lta20_60_TEMP135K-run2_NROW65_NBINROW8_NCOL400_NBINCOL8_EXPOSURE0_CLEAR600_2_0.root";
+  string fileName = "/mnt/mariano/VESSELatFNAL/run7/milo_hits_skp_moduleC55_C52_C42_C43_C53_C54-lta13_58_57_56_59_47-ssc20_15_18_19_13_14-H16_H17_H20_H21_H19_H18_run7_NROW130_NBINROW4_NCOL800_NBINCOL4_EXPOSURE0_CLEAR600_1_0.root";
+
   // string fileName = "/mnt/mariano/beforeSENSEI2020/shodata/halo60/milo.root";
   
   TFile *file = TFile::Open(fileName.c_str());
@@ -122,22 +136,23 @@ void miloAnalyzer(){
 
   // setting plots
   int binmin =0;
-  int binmax =40;
+  int binmax =100;
   int bins =(binmax-binmin);
 
 
 
   //cuts
-  vector<Int_t> ohdus={1,1,2,2};
-  // vector<Int_t> ohdus={2,2,3,3};
+  // vector<Int_t> ohdus={1,1,2,2};
+  vector<Int_t> ohdus={1,2,3,4};
   // int distance=60;
-  int distance=100;
+  int distance=60;
+  int edgecut=64; //64
   int xmin=8;
-  int xmax=226;
-  // int xmax=450;
+  // int xmax=226;
+  int xmax=400;
   int ymin=0;
-  int ymax=501;
-  // int ymax=3072;
+  // int ymax=501;
+  int ymax=65;
 
 
   
@@ -147,9 +162,30 @@ void miloAnalyzer(){
   
   TTree *tree = (TTree*) file->Get("imgSumm");
   TTree *otherTree = (TTree*) file->Get("otherTree");
+  TTree *headerTree = (TTree*) file->Get("headerTree_1");
   tree->SetBranchStatus("*",1); //enable all branches
   otherTree->SetBranchStatus("*",1); //enable all branches
-	
+  headerTree->SetBranchStatus("*",1); //enable all branches
+
+  //dimensions
+  char* NROWchar;NROWchar=((TLeafC *) headerTree->GetBranch("NROW")->GetLeaf("string"))->GetValueString();istringstream buffer(NROWchar); buffer >> NROW; 
+  cout << "NROW" << endl;
+  cout << NROW << endl;
+  cout << NROW << endl;
+  cout << NROW << endl;
+	char* NCOLchar;NCOLchar=((TLeafC *) headerTree->GetBranch("NCOL")->GetLeaf("string"))->GetValueString();istringstream buffer2(NCOLchar); buffer2 >> NCOL; 
+	char* CCDNROWchar;CCDNROWchar=((TLeafC *) headerTree->GetBranch("CCDNROW")->GetLeaf("string"))->GetValueString();istringstream buffer3(CCDNROWchar); buffer3 >> CCDNROW; 
+	char* CCDNCOLchar;CCDNCOLchar=((TLeafC *) headerTree->GetBranch("CCDNCOL")->GetLeaf("string"))->GetValueString();istringstream buffer4(CCDNCOLchar); buffer4 >> CCDNCOL; 
+	char* CCDNPRESchar;CCDNPRESchar=((TLeafC *) headerTree->GetBranch("CCDNPRES")->GetLeaf("string"))->GetValueString();istringstream buffer5(CCDNPRESchar); buffer5 >> CCDNPRES; 
+  char* NBINROWchar;NBINROWchar=((TLeafC *) headerTree->GetBranch("NBINROW")->GetLeaf("string"))->GetValueString();istringstream buffer6(NBINROWchar); buffer6 >> NBINROW; 
+	char* NBINCOLchar;NBINCOLchar=((TLeafC *) headerTree->GetBranch("NBINCOL")->GetLeaf("string"))->GetValueString();istringstream buffer7(NBINCOLchar); buffer7 >> NBINCOL; 
+  // NBINCOL=1;
+  // NBINROW=1;
+  char* RUNIDchar;RUNIDchar=((TLeafC *) headerTree->GetBranch("RUNID")->GetLeaf("string"))->GetValueString();istringstream buffer8(RUNIDchar); buffer8 >> RUNID;
+  xmin=CCDNPRES+1;
+  cout << NROW <<endl;
+  ymax=min(NROW,CCDNROW/(2*NBINROW));
+  xmax=(CCDNCOL/2+CCDNPRES)/NBINCOL;
 
   TTreeReader readPix("imgSumm", file);
 	TTreeReaderArray<Int_t> x1e(readPix, "x1e");
@@ -171,8 +207,7 @@ void miloAnalyzer(){
   vector<Float_t> rateSim;
   int j=0; // some counter
   vector<Int_t> excluded;
-  int Nmin=0; int Nmax=19;
-  int edgecut=4; //64
+  int Nmin=-1; int Nmax=555;
 
 
 
@@ -194,7 +229,8 @@ void miloAnalyzer(){
   while (readPix.Next()) {
     int N=0;
     for (int i = 0, ni =  x1e.GetSize(); i < ni; ++i) {
-        if (distance1e[i]>distance && !(mask1e[i] & (edgecut)) &&  x1e[i]>xmin && x1e[i]<xmax && y1e[i]>ymin && y1e[i]<ymax && ePix1e[i]<3 && (ohdu1e[i]==ohdus[0] || ohdu1e[i]==ohdus[1] || ohdu1e[i]==ohdus[2] || ohdu1e[i]==ohdus[3])){
+        if (distance1e[i]>distance && !(mask1e[i] & (edgecut)) &&  x1e[i]>xmin && x1e[i]<xmax && y1e[i]>ymin && y1e[i]<ymax && ePix1e[i]>1 && (ohdu1e[i]==ohdus[0] || ohdu1e[i]==ohdus[1] || ohdu1e[i]==ohdus[2] || ohdu1e[i]==ohdus[3])){
+          N++;
           N++;
         }
     }
@@ -492,7 +528,7 @@ void miloAnalyzer(){
 
   // TH1D * h4  =  new TH1D("Unnamed","",bins,0,60);
   c1->cd(4);
-  tree->Draw(("x1e:y1e>>h4("+std::to_string(bins/10)+",0,500,"+std::to_string(bins/10)+",0,230)").c_str(),("(ohdu1e=="+std::to_string(ohdus[0])+" || ohdu1e=="+std::to_string(ohdus[1])+" || ohdu1e=="+std::to_string(ohdus[2])+" || ohdu1e=="+std::to_string(ohdus[3])+") && distance1e>"+std::to_string(distance)+" && x1e>"+std::to_string(xmin)+" && x1e<"+std::to_string(xmax)+" && y1e>"+std::to_string(ymin)+"&& y1e<"+std::to_string(ymax)).c_str(),"colz");
+  tree->Draw(("y1e:x1e>>h4("+std::to_string(bins*0.25)+",0,400,"+std::to_string(bins*0.1)+",0,65)").c_str(),("(ohdu1e=="+std::to_string(ohdus[0])+" || ohdu1e=="+std::to_string(ohdus[1])+" || ohdu1e=="+std::to_string(ohdus[2])+" || ohdu1e=="+std::to_string(ohdus[3])+") && !(mask1e & (64)) &&distance1e>"+std::to_string(distance)+" && x1e>"+std::to_string(xmin)+" && x1e<"+std::to_string(xmax)+" && y1e>"+std::to_string(ymin)+"&& y1e<"+std::to_string(ymax)).c_str(),"colz");
 
   // readPix.Restart();
   // Nvector.clear();
