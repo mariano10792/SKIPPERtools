@@ -61,7 +61,7 @@ void split(const std::string& str, Container& cont, char delim = ' ')
 }
 
 // Main control variables
-int nsim=1; //number of simulations
+int nsim=100; //number of simulations
 int factor=1; //multiplicative factor
 bool simulation=true; //To set calPixTree1e as a simulation, too.
 // 1e cuts. Very low contamination.

@@ -530,7 +530,7 @@ int main(int argc, char* argv[]){
 			int Entries_ON = t_ON -> GetEntries(("ohdu=="+std::to_string(hdu)).c_str());
 			entries.push_back(Entries_ON);
 			// for (size_t run = initrun; run < initrun+1; run++)
-			for (size_t run = 0; run < nsim+1; run++)
+			for (size_t run = 0; run < nsim; run++)
 			{
 				TTree * t_OFF=nullptr;
 				t_OFF = (TTree*) f_OFF->Get(("simPixTree"+std::to_string(run)).c_str());
@@ -551,7 +551,7 @@ int main(int argc, char* argv[]){
 
 			// analyse Simulated data and perform Kolmogorov test
 			// for (size_t run = initrun; run < initrun+1; run++)
-			for (size_t run = 0; run < nsim+1; run++)
+			for (size_t run = 0; run < nsim; run++)
 			{
 				vector<vector<double>> OFF(4);
 				TTree * t_OFF=nullptr;
@@ -560,7 +560,7 @@ int main(int argc, char* argv[]){
 				cout<<"Entries in data file from Simulated images: " << Entries_OFF <<endl;
 				analyse(OFF, Entries_OFF, t_OFF, hdu);
 				kolmogorov(OFF, ON, hdu, outfilename);
-			}
+			
 
 
 
@@ -584,6 +584,9 @@ int main(int argc, char* argv[]){
 			pvaluesTree->Fill();
 			  
 			pvalores[0].clear(); pvalores[1].clear(); pvalores[2].clear(); pvalores[3].clear();
+
+
+			}
 			
 		}
 
