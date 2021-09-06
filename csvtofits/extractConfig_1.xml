@@ -1,0 +1,23 @@
+<extractConfig>
+    <cuts
+        epix="0.5" 
+        bleedX="100" 
+        bleedY="100" 
+        halo="100" 
+        clusterThr="5"
+        clusterCut="4"
+        />
+
+    <extra
+        looseClustersNoNeighbors="1" 
+        useDiagonalPix="1"
+        saveTracks="1"
+        saveTrackCuts="1"
+        /> 
+
+
+    <systemConfig
+        stackSize="256"
+        hitMaxSize="5000"
+        />
+</extractConfig>

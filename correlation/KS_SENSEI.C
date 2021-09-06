@@ -8,6 +8,7 @@ email: dariorodriguesfm@gmail.com
 
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <vector>
 #include <string>
 #include <iomanip>
@@ -54,6 +55,7 @@ using namespace std;
 
 template <class Container>
 
+
 void split(const std::string& str, Container& cont, char delim = ' ')
 {
     std::stringstream ss(str);
@@ -64,6 +66,8 @@ void split(const std::string& str, Container& cont, char delim = ' ')
 }
 
 
+// std::default_random_engine generator;
+// std::uniform_real_distribution<double> distribution(0.0,116000.0);
 
 //// Selection options ////
 
@@ -79,6 +83,8 @@ int nsim;
 int factor;
 
 vector<vector<double>> pvalores(4);
+vector<vector<double>> pvaloresbis(4);
+vector<vector<double>> largest_diff_sim(4);
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,11 +118,37 @@ int compare(const void *a, const void *b) {
 }
 
 
+// This function counts pvalues
+void count(Float_t &largestdiffVal, vector<vector<double>> largest_diff_sim, int index1)
+{	
+	largestdiffVal=0;
+	cout << largest_diff_sim[index1].size() << endl;
+	cout << "[";
+	cout << largest_diff_sim[index1][0] << ",";
+	for (size_t i = 1; i < largest_diff_sim[index1].size(); i++)
+	{
+		if (largest_diff_sim[index1][0]>largest_diff_sim[index1][i])
+		{
+			largestdiffVal++;
+		}
+		if (largest_diff_sim[index1][0]==largest_diff_sim[index1][i])
+		{
+			largestdiffVal=largestdiffVal+0.5;
+		}
+		
+		cout << largest_diff_sim[index1][i] <<",";
+	}
+	cout << "]" << endl;
+	largestdiffVal=largestdiffVal/largest_diff_sim[index1].size();
+	cout << largestdiffVal << endl;
+}
+
+
 //This function sorts values and creates x axis for each value
 void sorting(vector<vector<double>> &xaxis, vector<vector<double>> &DATA)
 {
-	int cExp = DATA[3].size();
-	int nExp = DATA[0].size();
+	int nExp = DATA[0].size(); //distnace from x origin
+	int cExp = DATA[3].size(); //distance entre pares
 
 	sort(DATA[0].begin(), DATA[0].end());
 	sort(DATA[1].begin(), DATA[1].end());
@@ -134,17 +166,18 @@ void sorting(vector<vector<double>> &xaxis, vector<vector<double>> &DATA)
 }
 
 
-void analyse(vector<vector<double>> &events, int Entries, TTree * tree, int hdu)
+void analyse(vector<vector<double>> &events, int Entries, TTree * tree, int hdu, int neighbours)
 {
 	Enable_and_Set_Branches_Experimental(tree);
 	vector<int> runID1e;  
 	vector<int> ohdu1e;
-
+	// auto test = TRandom3(0);
+	// test.SetSeed(0);
 	for(int i_event=0;i_event<Entries; i_event++){
 
 		tree->GetEntry(i_event);
 		if(ohdu!=hdu){continue;}
-				
+		
 		events[0].push_back(x);
 		events[1].push_back(y);
 		events[2].push_back(sqrt(pow(x,2)+pow(y,2)));
@@ -153,53 +186,154 @@ void analyse(vector<vector<double>> &events, int Entries, TTree * tree, int hdu)
 		ohdu1e.push_back(ohdu);
 	}
 
+	// for(int i_event=0;i_event<Entries; i_event++){
+
+	// 	tree->GetEntry(i_event);
+	// 	if(ohdu!=hdu){continue;}
+	// 	double  xx= test.Uniform(0,1)*1160.0;
+	// 	events[0].push_back(xx);
+	// 	runID1e.push_back(runID);
+	// 	ohdu1e.push_back(ohdu);
+	// }
+	// test.SetSeed(0);
+	// for(int i_event=0;i_event<Entries; i_event++){
+	// 	if(ohdu!=hdu){continue;}
+	// 	double yy= test.Uniform(0,1)*1160.0;
+	// 	events[1].push_back(yy);
+	// }
+	// for(int i_event=0;i_event<Entries; i_event++){
+	// 	events[2].push_back(sqrt(pow(events[0][i_event],2)+pow(events[1][i_event],2)));
+	// }
+
 	const int n = events[0].size();
 
-	double dx, dy, distance;
-	int neighbours=3;
+	// double dx, dy, distance;
 
-	vector <float_t> distancetemp(neighbours,3200);
-	for (int i = 0; i < n; ++i){
-		distancetemp.assign(distancetemp.size(),3200);
-		if (i>=n-neighbours){distancetemp.pop_back();}
-		for (int j = i+1; j < n; ++j){
-			if (runID1e[i]==runID1e[j]){
-				if (ohdu1e[i]==ohdu1e[j]){
-					dx=events[0][i]-events[0][j];
-					dy=events[1][i]-events[1][j];
-					distance=sqrt(pow(dx,2)+pow(dy,2));
-					if (distance<distancetemp[distancetemp.size()-1])
-					{
-						distancetemp[distancetemp.size()-1]=distance;
-						sort(distancetemp.begin(), distancetemp.end());
-					}
-				}
-			}
-		}
-		for (size_t temp = 0; temp < distancetemp.size(); temp++)
-		{
-			events[3].push_back(distancetemp[temp]);
-		}
-		events[3].pop_back();
-	}
+	// vector <float_t> distancetemp(neighbours,3200);
+	// for (int i = 0; i < n; ++i){
+	// 	distancetemp.assign(distancetemp.size(),3200);
+	// 	// for (size_t j = 0; j < distancetemp.size(); j++)
+	// 	// {
+	// 	// 	cout << distancetemp[j] << endl;
+	// 	// }
+	// 	// cout << ".................." << endl;
+
+	// 	if (i>=n-neighbours){distancetemp.pop_back();}
+	// 	for (int j = i+1; j < n; ++j){
+	// 		if (runID1e[i]==runID1e[j]){
+	// 			if (ohdu1e[i]==ohdu1e[j]){
+	// 				dx=events[0][i]-events[0][j];
+	// 				dy=events[1][i]-events[1][j];
+	// 				distance=sqrt(pow(dx,2)+pow(dy,2));
+	// 				if (distance<distancetemp[distancetemp.size()-1])
+	// 				{
+	// 					distancetemp[distancetemp.size()-1]=distance;
+	// 					// cout << distance << endl;
+	// 					sort(distancetemp.begin(), distancetemp.end());
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+
+	// 	// for (size_t j = 0; j < distancetemp.size(); j++)
+	// 	// {
+	// 	// 	cout << distancetemp[j] << endl;
+	// 	// }
+	// 	// cout << "------------------" << endl;
+	// 	for (size_t temp = 0; temp < distancetemp.size(); temp++)
+	// 	{
+	// 		events[3].push_back(distancetemp[temp]);
+	// 	}
+	// 	events[3].pop_back();
+	// }
+
+	// cout << "*****************" << endl;
+	// cout << "*****************" << endl;
+	// cout << "*****************" << endl;
+	// cout << "*****************" << endl;
+	
 	const int c = events[3].size();
+	cout << c << " pair of events counted." << endl;
 }
 
 
-void kolmogorovTest(vector<vector<double>> ON, vector<vector<double>> OFF, vector<vector<double>> x_ON, vector<vector<double>> x_OFF, int nn, int mm, double &pvalue, int index1, int index2)
+void kolmogorovTest2(vector<vector<double>> ON, vector<vector<double>> OFF, vector<vector<double>> x_ON, vector<vector<double>> x_OFF, double &pvalue, int index1, int index2)
 {
-	int ntotal=ON[0].size()+OFF[0].size();
-    int ctotal=ON[3].size()+OFF[3].size(); //4th test
+
+	// int nn=10000;
+	// int mm=OFF[0].size();
+	// if (index2==1){
+	// 	nn=100000; mm=OFF[3].size();
+	// }
+		
+	// int ntotal=nn+mm;
+	
+    // double x_ONOFF[ntotal][3];
+
+	// double diff,last_ON,last_OFF,largest_diff=0;
+	// for (Int_t i=0;i<nn;i++) {
+	// 	if (index1==0) x_ONOFF[i][0]=(double(i)/nn)*1160;
+	// 	if (index1==1) x_ONOFF[i][0]=(double(i)/nn)*1160;
+	// 	x_ONOFF[i][1]=double(i)/nn;
+	// 	x_ONOFF[i][2]=1;
+	// }
+
+
+	int nn=ON[0].size();
+	int mm=OFF[0].size();
+	if (index2==1){
+		nn=ON[3].size(); mm=OFF[3].size();
+	}
+	int ntotal=nn+mm;
 
     double x_ONOFF[ntotal][3];
-    double y_ONOFF[ntotal][3];
-    double d_ONOFF[ntotal][3];
-    double c_ONOFF[ctotal][3]; //4th test
+
+
 	double diff,last_ON,last_OFF,largest_diff=0;
 	for (Int_t i=0;i<nn;i++) {
-	x_ONOFF[i][0]=ON[index1][i];
-	x_ONOFF[i][1]=x_ON[index2][i];
-	x_ONOFF[i][2]=1;
+		x_ONOFF[i][0]=ON[index1][i];
+		x_ONOFF[i][1]=x_ON[index2][i];
+		x_ONOFF[i][2]=1;
+	}
+
+	for (Int_t i=0;i<mm;i++) {
+		x_ONOFF[i+nn][0]=OFF[index1][i];
+		x_ONOFF[i+nn][1]=x_OFF[index2][i];
+		x_ONOFF[i+nn][2]=0;
+	}
+	qsort(x_ONOFF, ARRSIZE(x_ONOFF), sizeof(*x_ONOFF), compare);
+	for (Int_t i=0;i<ntotal;i++) {
+		if (x_ONOFF[i][2]==0) last_OFF = x_ONOFF[i][1];
+		if (x_ONOFF[i][2]==1) last_ON = x_ONOFF[i][1];
+		diff=abs(last_ON-last_OFF);
+		if (largest_diff<diff) largest_diff=diff;
+	}
+	largest_diff_sim[index1].push_back(largest_diff);
+	
+
+}
+
+void kolmogorovTest(vector<vector<double>> ON, vector<vector<double>> OFF, vector<vector<double>> x_ON, vector<vector<double>> x_OFF, double &pvalue, int index1, int index2)
+{
+	int nn=ON[0].size();
+	int mm=OFF[0].size();
+	if (index2==1){
+		nn=ON[3].size(); mm=OFF[3].size();
+	}
+	int ntotal=nn+mm;
+	
+    // int ctotal=ON[3].size()+OFF[3].size(); //4th test
+
+    double x_ONOFF[ntotal][3];
+    // double y_ONOFF[ntotal][3];
+    // double d_ONOFF[ntotal][3];
+    // double c_ONOFF[ctotal][3]; //4th test
+
+	double diff,last_ON,last_OFF,largest_diff=0;
+	for (Int_t i=0;i<nn;i++) {
+		x_ONOFF[i][0]=ON[index1][i];
+		x_ONOFF[i][1]=x_ON[index2][i];
+		x_ONOFF[i][2]=1;
 	}
 	for (Int_t i=0;i<mm;i++) {
 		x_ONOFF[i+nn][0]=OFF[index1][i];
@@ -209,6 +343,7 @@ void kolmogorovTest(vector<vector<double>> ON, vector<vector<double>> OFF, vecto
 	qsort(x_ONOFF, ARRSIZE(x_ONOFF), sizeof(*x_ONOFF), compare);
 
 	for (Int_t i=0;i<ntotal;i++) {
+		// if (index2==0) cout << *x_ONOFF[i] <<endl;
 		if (x_ONOFF[i][2]==0) last_OFF = x_ONOFF[i][1];
 		if (x_ONOFF[i][2]==1) last_ON = x_ONOFF[i][1];
 		diff=abs(last_ON-last_OFF);
@@ -222,13 +357,49 @@ void kolmogorovTest(vector<vector<double>> ON, vector<vector<double>> OFF, vecto
 	// double pvalue_x_old=2*exp(-2*largest_diff*largest_diff*(nn*mm)/(nn+mm));
 	// cout<<"p-value_old X: "<<pvalue_x_old<<endl;
 
-	pvalue=0;
+	pvalue=0; double pvalue_total=0;
 	double sum_x=0;
-	double z_x=largest_diff*pow((nn*mm)*1./(nn+mm),0.5);
-	for (int r = 1; r < 100; ++r) pvalue+=2*pow(-1,r-1)*exp(-2*pow(r,2)*pow(z_x,2));
+	// double z_x=largest_diff*pow((nn*mm)*1./(nn+mm),0.5);
+	double z_x=exp(log(largest_diff)+0.5*(log(nn)+log(mm)-log(nn+mm)));
+	// z_x = z_x+1/(6*pow(nn,0.5))+(z_x-1)/(4*(nn));
+	// int r=1;
+	// while (pvalue==0 || abs(pvalue)>0.0001)
+	// {
+	// 	pvalue=2*pow(-1,r-1)*exp(-2*pow(r,2)*pow(z_x,2));
+	// 	cout << pvalue << endl;
+	// 	pvalue_total+=pvalue;
+	// 	r++;
+	// 	if (r>10000)
+	// 	{
+	// 		cout << "FATAL ERROR: P-VALUE DOES NOT CONVERGE." << endl;
+	// 		break;
+	// 	}
+		
+	// }
 
-	pvalores[index1].push_back(pvalue);
+	// cout << "It took me " << r << " terms to converge to a p-value." << endl; 
+	// cout << "---------------------" << endl;
+	
+
+	for (int r = 1; r < 100; ++r) pvalue_total+=2*pow(-1,r-1)*exp(-2*pow(r,2)*pow(z_x,2));
+
+	if (pvalue_total<0.5)
+	{
+		pvalores[index1].push_back(1-pvalue_total);
+	}
+	else
+	{
+		pvalores[index1].push_back(pvalue_total);
+	}
+	
+	
+	// pvalores[index1].push_back(pvalue_total);
+	pvaloresbis[index1].push_back(pvalue_total);
 }
+
+
+
+
 
 int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, std::string outfilename){
 	
@@ -247,22 +418,26 @@ int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, s
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	int nn=ON[0].size();
-	int mm=OFF[0].size();   
+	int mm=OFF[0].size();  
 
     // double diff,last_ON,last_OFF,largest_diff;
 
 	double pvalue_x=0; double pvalue_y=0; double pvalue_c=0; double pvalue_d=0;
 
-	kolmogorovTest(ON, OFF, x_ON, x_OFF, nn, mm, pvalue_x,0,0);
-	kolmogorovTest(ON, OFF, x_ON, x_OFF, nn, mm, pvalue_y,1,0);
-	kolmogorovTest(ON, OFF, x_ON, x_OFF, nn, mm, pvalue_d,2,0);
-	kolmogorovTest(ON, OFF, x_ON, x_OFF, nn, mm, pvalue_c,3,1);
+	// kolmogorovTest(ON, OFF, x_ON, x_OFF, pvalue_x,0,0);
+	kolmogorovTest2(ON, OFF, x_ON, x_OFF, pvalue_x,0,0);
+	// kolmogorovTest(ON, OFF, x_ON, x_OFF, pvalue_y,1,0);
+	kolmogorovTest2(ON, OFF, x_ON, x_OFF, pvalue_y,1,0);
+	// kolmogorovTest(ON, OFF, x_ON, x_OFF, pvalue_d,2,0);
+	kolmogorovTest2(ON, OFF, x_ON, x_OFF, pvalue_d,2,0);
+	// kolmogorovTest(ON, OFF, x_ON, x_OFF, pvalue_c,3,1);
+	kolmogorovTest2(ON, OFF, x_ON, x_OFF, pvalue_c,3,1);
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////// PLOTS ////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-	bool PLOTS=true;
+	bool PLOTS=false;
 
 	if (PLOTS){
 
@@ -277,6 +452,7 @@ int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, s
 	TGraph * grxxON = new TGraph(ON[0].size(), &ON[0][0], &x_ON[0][0]);
     grxxON->Draw("");
 	grxxON->GetHistogram()->GetXaxis()->SetLimits(0,3200);
+	// grxxON->GetHistogram()->GetXaxis()->SetLimits(0,1160);
 	grxxON->Draw("");
     grxxON->GetXaxis()->SetTitle("X-coordinate");
     grxxON->GetYaxis()->SetTitle("Cumulative probability");
@@ -324,6 +500,7 @@ int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, s
 	
     gryyON->Draw("");
 	gryyON->GetHistogram()->GetXaxis()->SetLimits(0,500);
+	// gryyON->GetHistogram()->GetXaxis()->SetLimits(0,1160);
 	gryyON->Draw("");
     gryyON->GetXaxis()->SetTitle("Y-coordinate");
     gryyON->GetYaxis()->SetTitle("Cumulative probability");
@@ -369,6 +546,7 @@ int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, s
 	
     grddON->Draw("");
 	grddON->GetHistogram()->GetXaxis()->SetLimits(0,3200);
+	// grddON->GetHistogram()->GetXaxis()->SetLimits(0,1160);
 	grddON->Draw("");
     grddON->GetXaxis()->SetTitle("Distance to origin");
     grddON->GetYaxis()->SetTitle("Cumulative probability");
@@ -386,6 +564,7 @@ int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, s
     grddOFF->SetLineColor(kRed);
     grddOFF->SetLineWidth(2);
 	grddOFF->GetXaxis()->SetRange(0,3200);
+	// grddOFF->GetXaxis()->SetRange(0,1160);
     grddOFF->Draw("same");
     
 	// Set limit y axis
@@ -413,6 +592,7 @@ int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, s
 	
     grccON->Draw("");
 	grccON->GetHistogram()->GetXaxis()->SetLimits(0,3200);
+	// grccON->GetHistogram()->GetXaxis()->SetLimits(0,1160);
 	grccON->Draw("");
     grccON->GetXaxis()->SetTitle("Distance between events");
     grccON->GetYaxis()->SetTitle("Cumulative probability");
@@ -454,6 +634,9 @@ int kolmogorov(vector<vector<double>> OFF, vector<vector<double>> ON, int hdu, s
 
 int main(int argc, char* argv[]){
 
+	TStopwatch t; // time counter
+	t.Start();
+
 	gROOT->SetStyle("Plain");
 	cout.precision(4);  // Print using four decimals precision
 	cout<<fixed;        // ...exactly four decimals
@@ -477,35 +660,42 @@ int main(int argc, char* argv[]){
 	//initialize output tree
 	TFile *outputFile = new TFile(("files/"+outfilename).c_str(),"RECREATE"); //output file
 	cout << outputFile->GetName() << endl;
-	Float_t pvalues1Val; Float_t pvalues2Val; Float_t pvalues3Val; Float_t pvalues4Val; Int_t ohduVal; Int_t runIDVal; Int_t LTANAMEVal;
-	TTree * pvaluesTree = new TTree("pvalues","pvalues");
-	pvaluesTree->Branch("pvalues1",&pvalues1Val,"pvalues1/F");
-	pvaluesTree->Branch("pvalues2",&pvalues2Val,"pvalues2/F");
-	pvaluesTree->Branch("pvalues3",&pvalues3Val,"pvalues3/F");
-	pvaluesTree->Branch("pvalues4",&pvalues4Val,"pvalues4/F");
-	pvaluesTree->Branch("runID",&runIDVal,"runID/I");
-	pvaluesTree->Branch("ohdu",&ohduVal,"ohdu/I");
-	pvaluesTree->Branch("LTANAME",&LTANAMEVal,"LTANAME/I");
+	Int_t ohduVal; Int_t runIDVal; Int_t LTANAMEVal;
+	// Float_t pvalues1Val; Float_t pvalues2Val; Float_t pvalues3Val; Float_t pvalues4Val; 
+	// Float_t pvaluesbis1Val; Float_t pvaluesbis2Val; Float_t pvaluesbis3Val; Float_t pvaluesbis4Val;
+	// TTree * pvaluesTree = new TTree("pvalues","pvalues");
+	// pvaluesTree->Branch("pvalues1",&pvalues1Val,"pvalues1/F");
+	// pvaluesTree->Branch("pvalues2",&pvalues2Val,"pvalues2/F");
+	// pvaluesTree->Branch("pvalues3",&pvalues3Val,"pvalues3/F");
+	// pvaluesTree->Branch("pvalues4",&pvalues4Val,"pvalues4/F");
+	// pvaluesTree->Branch("pvaluesbis1",&pvaluesbis1Val,"pvaluesbis1/F");
+	// pvaluesTree->Branch("pvaluesbis2",&pvaluesbis2Val,"pvaluesbis2/F");
+	// pvaluesTree->Branch("pvaluesbis3",&pvaluesbis3Val,"pvaluesbis3/F");
+	// pvaluesTree->Branch("pvaluesbis4",&pvaluesbis4Val,"pvaluesbis4/F");
+	// pvaluesTree->Branch("runID",&runIDVal,"runID/I");
+	// pvaluesTree->Branch("ohdu",&ohduVal,"ohdu/I");
+	// pvaluesTree->Branch("LTANAME",&LTANAMEVal,"LTANAME/I");
+	TTree * largestdiffsTree = new TTree("largestdiffs","largestdiffs");
+	Float_t largestdiff1Val; Float_t largestdiff2Val; Float_t largestdiff3Val; Float_t largestdiff4Val;
+	largestdiffsTree->Branch("largestdiff1",&largestdiff1Val,"largestdiff1/F");
+	largestdiffsTree->Branch("largestdiff2",&largestdiff2Val,"largestdiff2/F");
+	largestdiffsTree->Branch("largestdiff3",&largestdiff3Val,"largestdiff3/F");
+	largestdiffsTree->Branch("largestdiff4",&largestdiff4Val,"largestdiff4/F");
+	largestdiffsTree->Branch("runID",&runIDVal,"runID/I");
+	largestdiffsTree->Branch("ohdu",&ohduVal,"ohdu/I");
+	largestdiffsTree->Branch("LTANAME",&LTANAMEVal,"LTANAME/I");
 
 
 	for (size_t iFile = 0; iFile < inFileList.size(); iFile++)
 	{
 		
-		// Open Experimental file and tree
-		TFile * f_ON = TFile::Open(inFileList[iFile].c_str());
+		// Open file
+		TFile * file = TFile::Open(inFileList[iFile].c_str());
 		cout << "Opening " << inFileList[iFile] << endl;
-		if (!f_ON->IsOpen()) {std::cerr << "ERROR: cannot open the root file with experimental data" << std::endl;}
-		TTree * t_ON=nullptr;
-		t_ON = (TTree*) f_ON->Get("calPixTree1e");
-		int Entries_ON = t_ON -> GetEntries();
-		cout<<"Entries in data file from Experimental images: "<<Entries_ON<<endl;
-
-		// Open Simulated file
-		TFile * f_OFF = TFile::Open(inFileList[iFile].c_str());
-		if (!f_OFF->IsOpen()) {std::cerr << "ERROR: cannot open the root file with experimental data" << std::endl;}
+		if (!file->IsOpen()) {std::cerr << "ERROR: cannot open the root file with experimental data" << std::endl;}
 
 		// Open Simulated header Tree
-		TTree * simHeader = (TTree*) f_OFF->Get("simHeader");
+		TTree * simHeader = (TTree*) file->Get("simHeader");
 		int nsim; int factor; int LTANAME;
 		simHeader->SetBranchStatus("*",1);
 		simHeader->SetBranchAddress("factor",&factor);
@@ -515,85 +705,111 @@ int main(int argc, char* argv[]){
 		cout << "Number of simulations: " << nsim << endl;
 		cout << "Factor of events simulated: " << factor<< endl;
 
-		
-
-
+		//set number of neighbours 
+		int neighbours=1;
 
 
 		//analyse and compare data
-		for (int hdu = 1; hdu < 5; hdu++){
+		for (int hdu = 1; hdu < 2; hdu++){
 
 
-			//Get number of entries for each run hdu
 
-			vector <int> entries;
-			int Entries_ON = t_ON -> GetEntries(("ohdu=="+std::to_string(hdu)).c_str());
-			entries.push_back(Entries_ON);
-			// for (size_t run = initrun; run < initrun+1; run++)
-			for (size_t run = 0; run < nsim; run++)
-			{
-				TTree * t_OFF=nullptr;
-				t_OFF = (TTree*) f_OFF->Get(("simPixTree"+std::to_string(run)).c_str());
-				int Entries_OFF = t_OFF -> GetEntries(("ohdu=="+std::to_string(hdu)).c_str());
-				entries.push_back(Entries_OFF);
-			}
-			
-			int minEntries = *std::min_element(entries.begin(), entries.end());
-			cout << minEntries << endl;
-
-
+			// analyse "Theoretical" data (factor 100)
+			vector<vector<double>> THEO(4); //x, y , x**2+y**2, distance entre eventos
+			TTree * t_THEO=nullptr;
+			t_THEO = (TTree*) file->Get("simPixTree00");
+			// t_THEO = (TTree*) file->Get("simPixTree0");
+			int Entries_THEO = t_THEO -> GetEntries();
+			analyse(THEO, Entries_THEO, t_THEO, hdu, neighbours);
 
 
 			// analyse Experimental data 
-			vector<vector<double>> ON(4);
-			Entries_ON = t_ON->GetEntries();
-			analyse(ON, Entries_ON, t_ON, hdu);
+			vector<vector<double>> ON(4); //x, y , x**2+y**2, distance entre eventos
+			TTree * t_ON=nullptr;
+			t_ON = (TTree*) file->Get("calPixTree1e");
+			int Entries_ON = t_ON -> GetEntries();
+			analyse(ON, Entries_ON, t_ON, hdu , neighbours);
+
+			// perform Kolmogorov test between Experimental and "Theoretical" data
+			kolmogorov(THEO, ON, hdu, outfilename);
 
 			// analyse Simulated data and perform Kolmogorov test
-			// for (size_t run = initrun; run < initrun+1; run++)
-			for (size_t run = 0; run < nsim; run++)
+			// for (size_t run = 0; run < nsim-1; run++)
+			// for (size_t run = 0; run < 100-1; run++)
+			for (size_t run = 1; run < 100-1; run++)
 			{
 				vector<vector<double>> OFF(4);
 				TTree * t_OFF=nullptr;
-				t_OFF = (TTree*) f_OFF->Get(("simPixTree"+std::to_string(run)).c_str());
+				t_OFF = (TTree*) file->Get(("simPixTree"+std::to_string(run)).c_str());
 				int Entries_OFF = t_OFF -> GetEntries();
 				cout<<"Entries in data file from Simulated images: " << Entries_OFF <<endl;
-				analyse(OFF, Entries_OFF, t_OFF, hdu);
-				kolmogorov(OFF, ON, hdu, outfilename);
+				analyse(OFF, Entries_OFF, t_OFF, hdu , neighbours);
+				kolmogorov(THEO, OFF, hdu, outfilename);
+
+
+
+
 			
+				//write in output tree
+				ohduVal=hdu;
+				cout << ohduVal << endl;
+				runIDVal=runID;
+				cout << runIDVal << endl;
+				LTANAMEVal=LTANAME;
+				cout << LTANAMEVal << endl;
+				// pvalues1Val= std::accumulate( pvalores[0].begin(), pvalores[0].end(), 0.0) / pvalores[0].size();			
+				// pvalues2Val= std::accumulate( pvalores[1].begin(), pvalores[1].end(), 0.0) / pvalores[1].size();
+				// pvalues3Val= std::accumulate( pvalores[2].begin(), pvalores[2].end(), 0.0) / pvalores[2].size();
+				// pvalues4Val= std::accumulate( pvalores[3].begin(), pvalores[3].end(), 0.0) / pvalores[3].size();
+				// pvaluesbis1Val= std::accumulate( pvaloresbis[0].begin(), pvaloresbis[0].end(), 0.0) / pvaloresbis[0].size();			
+				// pvaluesbis2Val= std::accumulate( pvaloresbis[1].begin(), pvaloresbis[1].end(), 0.0) / pvaloresbis[1].size();
+				// pvaluesbis3Val= std::accumulate( pvaloresbis[2].begin(), pvaloresbis[2].end(), 0.0) / pvaloresbis[2].size();
+				// pvaluesbis4Val= std::accumulate( pvaloresbis[3].begin(), pvaloresbis[3].end(), 0.0) / pvaloresbis[3].size();
+				// cout << pvalues1Val << endl;
+				// cout << pvalues2Val << endl;
+				// cout << pvalues3Val << endl;
+				// cout << pvalues4Val << endl;
+				//largest diff
+				
+				
 
+
+				outputFile->cd();
+				
+				// pvaluesTree->Fill();
+
+				pvalores[0].clear(); pvalores[1].clear(); pvalores[2].clear(); pvalores[3].clear();
+				pvaloresbis[0].clear(); pvaloresbis[1].clear(); pvaloresbis[2].clear(); pvaloresbis[3].clear();
 
 
 			
-			//write in output tree
-			ohduVal=hdu;
-			cout << ohduVal << endl;
-			runIDVal=runID;
-			cout << runIDVal << endl;
-			LTANAMEVal=LTANAME;
-			cout << LTANAMEVal << endl;
-			pvalues1Val= std::accumulate( pvalores[0].begin(), pvalores[0].end(), 0.0) / pvalores[0].size(); 
-			pvalues2Val= std::accumulate( pvalores[1].begin(), pvalores[1].end(), 0.0) / pvalores[1].size();
-			pvalues3Val= std::accumulate( pvalores[2].begin(), pvalores[2].end(), 0.0) / pvalores[2].size();
-			pvalues4Val= std::accumulate( pvalores[3].begin(), pvalores[3].end(), 0.0) / pvalores[3].size();
-			cout << pvalues1Val << endl;
-			cout << pvalues2Val << endl;
-			cout << pvalues3Val << endl;
-			cout << pvalues4Val << endl;
-			outputFile->cd();
-			pvaluesTree->Fill();
-			  
-			pvalores[0].clear(); pvalores[1].clear(); pvalores[2].clear(); pvalores[3].clear();
-
-
 			}
+
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+			
+			count(largestdiff1Val, largest_diff_sim, 0);
+			count(largestdiff2Val, largest_diff_sim, 1);
+			count(largestdiff3Val, largest_diff_sim, 2);
+			count(largestdiff4Val, largest_diff_sim, 3);
+
+			largestdiffsTree->Fill();
+			largest_diff_sim.clear();
+
 			
 		}
 
 	}
-	pvaluesTree->Write();
+	// pvaluesTree->Write();
+	largestdiffsTree->Write();
 	outputFile->Write();
 	outputFile->Close();
+
+	t.Stop();
+	t.Print();
+
 	return 0;
 }
 

@@ -61,14 +61,15 @@ void split(const std::string& str, Container& cont, char delim = ' ')
 }
 
 // Main control variables
-int nsim=100; //number of simulations
+int nsim=1001; //number of simulations
 int factor=1; //multiplicative factor
-bool simulation=true; //To set calPixTree1e as a simulation, too.
+bool simulation=false; //To set calPixTree1e as a simulation, too.
 // 1e cuts. Very low contamination.
 double lowercut=.85; //1.5 for 2e-
 double uppercut=1.5; //2.5 for 2e-
 // set cuts and edgedist alias
-string cuts="!(mask & (1+16+128+256+512+1024+4096+16384)) && min(bleedX,bleedY)>=100 && min(distance,edgedist)>="; //"!(mask & (1+4+16+128+256+512+1024+4096)) && distance1e>=20 && min(distance,edgedist)>=" for 2e-
+string cuts="!(mask & (1+16+128+256+512+1024+4096+16384)) && min(bleedX,bleedY)>=50 && min(distance,edgedist)>="; //"!(mask & (1+4+16+128+256+512+1024+4096)) && distance1e>=20 && min(distance,edgedist)>=" for 2e-
+// string cuts="!(mask & (16+128+256+512+1024+4096+16384)) && min(bleedX,bleedY)>=100 && distance>="; //"!(mask & (1+4+16+128+256+512+1024+4096)) && distance1e>=20 && min(distance,edgedist)>=" for 2e-
 
 
 // Masfile configuration variables // 
@@ -84,11 +85,15 @@ void readConfig(TFile *file)
 	char* NCOLchar;NCOLchar=((TLeafC *) config->GetBranch("NCOL")->GetLeaf("string"))->GetValueString();istringstream buffer2(NCOLchar); buffer2 >> NCOL; 
 	char* CCDNROWchar;CCDNROWchar=((TLeafC *) config->GetBranch("CCDNROW")->GetLeaf("string"))->GetValueString();istringstream buffer3(CCDNROWchar); buffer3 >> CCDNROW; 
 	char* CCDNCOLchar;CCDNCOLchar=((TLeafC *) config->GetBranch("CCDNCOL")->GetLeaf("string"))->GetValueString();istringstream buffer4(CCDNCOLchar); buffer4 >> CCDNCOL; 
-	char* CCDNPRESchar;CCDNPRESchar=((TLeafC *) config->GetBranch("CCDNPRES")->GetLeaf("string"))->GetValueString();istringstream buffer5(CCDNPRESchar); buffer5 >> CCDNPRES; 
+	// CCDNPRES=7;
+    // NBINROW=1;
+    // NBINCOL=1;
+    // RUNID=1;
+    // LTANAME=1;
+	
 	char* NBINROWchar;NBINROWchar=((TLeafC *) config->GetBranch("NBINROW")->GetLeaf("string"))->GetValueString();istringstream buffer6(NBINROWchar); buffer6 >> NBINROW; 
 	char* NBINCOLchar;NBINCOLchar=((TLeafC *) config->GetBranch("NBINCOL")->GetLeaf("string"))->GetValueString();istringstream buffer7(NBINCOLchar); buffer7 >> NBINCOL; 
-	// NBINCOL=1;
-	// NBINROW=1;
+	char* CCDNPRESchar;CCDNPRESchar=((TLeafC *) config->GetBranch("CCDNPRES")->GetLeaf("string"))->GetValueString();istringstream buffer5(CCDNPRESchar); buffer5 >> CCDNPRES; 
 	char* RUNIDchar;RUNIDchar=((TLeafC *) config->GetBranch("RUNID")->GetLeaf("string"))->GetValueString();istringstream buffer8(RUNIDchar); buffer8 >> RUNID;
 	char* LTANAMEchar;LTANAMEchar=((TLeafC *) config->GetBranch("LTANAME")->GetLeaf("string"))->GetValueString();istringstream buffer9(LTANAMEchar); buffer9 >> LTANAME; 
 }
@@ -142,13 +147,13 @@ int main(int argc, char* argv[]){
 		readConfig(file);
 		cuts+=argv[argc-1]; //last arg is halo
 		calPixTree->SetAlias("edgedist",("min(min(x-"+std::to_string(CCDNPRES+1)+", "+std::to_string((CCDNCOL/2+CCDNPRES)/NBINCOL)+"-x), min(y-1, "+std::to_string(min(NROW,CCDNROW/(2*NBINROW)))+"-y))").c_str());
-
-
-		
+	
 
 		// extract real 0 and 1e- events into a TTreeReader
 		outfile->cd();
+		cout << calPixTree->GetEntries() << endl;
 		TTree *calPixTreeAux = calPixTree->CopyTree((cuts+"&& ePix<"+std::to_string(uppercut)).c_str());
+		cout << calPixTreeAux->GetEntries() << endl;
 		calPixTreeAux->SetName("calPixTreeAux");
 		calPixTreeAux->SetBranchStatus("*",1);
 		TTreeReader readValues("calPixTreeAux", outfile);
@@ -157,8 +162,9 @@ int main(int argc, char* argv[]){
 		TTreeReaderValue<Int_t> yReader(readValues, "y");
 		TTreeReaderValue<Double_t> ePixReader(readValues, "ePix");
 
-
-
+		// rates
+		// float ones=0;
+		// float zeros=0;
 
 		// create xy vector with all data
 		vector<vector<Int_t>> xy(5); // ohdu, x position, y position, x+y*NCOL position and boolean (1 if occupied 0 if not)
@@ -172,16 +178,26 @@ int main(int argc, char* argv[]){
 			if (prevohdu!=*ohduReader){events[prevohdu-1]+=size; prevohdu=*ohduReader; size=0;}
 			xy[1].push_back(*xReader);
 			xy[2].push_back(*yReader);
-			if (*ePixReader>lowercut && *ePixReader<uppercut)
+			if (*ePixReader>lowercut)
 			{
 				xy[3].push_back(1);
+				// if (*ohduReader==1) ones++;
 				xy[4].push_back(*xReader+*yReader*NCOL);
 			}else{
 				xy[3].push_back(0);
+				// if (*ohduReader==1) zeros++;
 				xy[4].push_back(*xReader+*yReader*NCOL);
 			}
 		}	
 		events[prevohdu-1]=size;
+		// cout << size << endl;
+		// cout << ones << endl;
+		// cout << xy[0].size() << endl;
+		// cout << xy[1].size() << endl;
+		// cout << xy[2].size() << endl;
+		// cout << xy[3].size() << endl;
+		// cout << xy[4].size() << endl;
+		// cout << zeros << endl;
 
 
 		//extract real x events into a TList
@@ -197,13 +213,13 @@ int main(int argc, char* argv[]){
 		TCanvas * canvas   = new TCanvas("Fit","Fit",0,0,1200,800); //coord top lef, size x, sizey
 		// canvas->cd();
 		canvas->Print(("files/LadderFit_"+outfilename+".pdf[").c_str());
-		
-		for (size_t hdu = 1; hdu < 5; hdu++)
-		{
+		int counter=0;
+		for (size_t hdu = 1; hdu < 2; hdu++)
+		{	
+			counter=0;
 			//create kolmogorov cdf
 			Double_t *ladder = new Double_t[events[hdu-1]];
 			Double_t *ladderX = new Double_t[events[hdu-1]];
-			int counter=0;
 			for (size_t i = 0; i < events[hdu-1]; i++)
 			{
 				if (xy[3][i+initcounter]==1){counter++;}
@@ -216,11 +232,10 @@ int main(int argc, char* argv[]){
 			//fit kolmogorov cdf
 						
 			TGraphErrors *graph = new TGraphErrors(events[hdu-1], ladderX, ladder);
-			TF1 *a = new TF1(("f"+std::to_string(hdu)).c_str(), "[0]*x*x+[1]*x", 0, events[hdu-1]);
+			TF1 *a = new TF1(("f"+std::to_string(hdu)).c_str(), "[0]*x*x*x+[1]*x*x+[2]*x", 0, events[hdu-1]);
 			graph->Draw();
 			graph->Fit(("f"+std::to_string(hdu)).c_str(),"Q");
 			f1[hdu-1] = (*a);
-			// canvas->SaveAs(("LadderFit"+std::to_string(hdu)+"_"+outfilename+".pdf").c_str());
 			canvas->cd();
 			canvas->Print(("files/LadderFit_"+outfilename+".pdf").c_str());
 			canvas->Clear();
@@ -232,30 +247,62 @@ int main(int argc, char* argv[]){
 		//simulate readout DC and save to trees
 		Int_t N1; Int_t x; Int_t y; Int_t ohdu;
 		TRandom3 DC(0);
-		
+		DC.SetSeed(0);
+		// vector <float> temp;
+
+				
+		// relocate 1e- events from experimental data into experimental trees. The last tree will be called simPixTree00 and will have a 100 factor.
 		for (size_t t = 0; t < nsim; t++)
 		{
+			
 			trees[t].SetName(("simPixTree"+std::to_string(t)).c_str());
+			if (t==nsim-1) {trees[t].SetName("simPixTree00"); factor=factor*100;}
+			// cout << factor << endl;
 			trees[t].Branch("RUNID",&t,"RUNID/I");
 			trees[t].Branch("ohdu",&ohdu,"ohdu/I");
 			trees[t].Branch("x",&x,"x/I");
 			trees[t].Branch("y",&y,"y/I");
 
-			for (size_t hdu = 1; hdu < 5; hdu++)
+			int nevents=0;
+			
+			for (size_t hdu = 1; hdu < 2; hdu++)
 			{
 				ohdu=hdu;
+				// // int n= DC.Poisson((ones/(zeros+ones))*events[hdu-1]);
+				// int n= ones*factor;
+				// for (size_t i = 0; i < n; i++)
+				// {
+				// 	int position = int(DC.Uniform(0,1)*events[hdu-1]);
+				// 	x=xy[1][position];
+				// 	y=xy[2][position];
+				// 	// x=xy[1][int(DC.Uniform(0,events[hdu-1]))];
+				// 	// y=xy[2][int(DC.Uniform(0,events[hdu-1]))];
+				// 	trees[t].Fill();
+				// }
+				
+				
+				
 				for (size_t i = 0; i < events[hdu-1]; i++)
 				{
 					if (DC.Poisson((f1[hdu-1].Eval(i)-f1[hdu-1].Eval(i-1))*factor)>0)
+					// if (DC.Poisson(ones*factor/(zeros+ones))>0)
 					{
+						// if (hdu==1)	temp.push_back((f1[hdu-1].Eval(i)-f1[hdu-1].Eval(i-1))*factor);
+						if (hdu==1) nevents++;
 						x=xy[1][i];
 						y=xy[2][i];
 						trees[t].Fill();
 					}
 				}
+				// if (hdu==1) cout << nevents << ",";
+				
 			}
-			
+			if (t==nsim-1) factor=int(factor/100.0); //I need the factor to be the original for calPixTree1e, if needed.
 		}
+		// cout << "]";
+		// cout << std::accumulate(temp.begin(), temp.end(), 0.0) / temp.size() << endl;
+
+		// if simulation==true then relocate 1e- events from experimental data into experimental tree.
 		if (simulation==true)
 		{
 			int x; int y; int ohdu;
@@ -265,12 +312,29 @@ int main(int argc, char* argv[]){
 			trees[nsim].Branch("x",&x,"x/I");
 			trees[nsim].Branch("y",&y,"y/I");
 
-			for (size_t hdu = 1; hdu < 5; hdu++)
+			for (size_t hdu = 1; hdu < 2; hdu++)
 			{
 				ohdu=hdu;
+
+				// // int n= DC.Poisson((ones/(zeros+ones))*events[hdu-1]);
+				// int n= ones*factor;
+				// for (size_t i = 0; i < n; i++)
+				// {
+				// 	int position = int(DC.Uniform(0,1)*events[hdu-1]);
+				// 	x=xy[1][position];
+				// 	y=xy[2][position];
+				// 	// x=xy[1][int(DC.Uniform(0,events[hdu-1]))];
+				// 	// y=xy[2][int(DC.Uniform(0,events[hdu-1]))];
+				// 	trees[nsim].Fill();
+				// }
+
+
+
+
 				for (size_t i = 0; i < events[hdu-1]; i++)
 				{
 					if (DC.Poisson((f1[hdu-1].Eval(i)-f1[hdu-1].Eval(i-1))*factor)>0)
+					// if (DC.Poisson(ones*factor/(zeros+ones))>0)
 					{
 						x=xy[1][i];
 						y=xy[2][i];
@@ -281,6 +345,22 @@ int main(int argc, char* argv[]){
 
 		}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		delete calPixTreeAux; // delete so future calPixTreeAux is re-used
 	}
 
@@ -290,6 +370,12 @@ int main(int argc, char* argv[]){
 	simHeader->Branch("LTANAME",&LTANAME,"LTANAME/I");
 	simHeader->Branch("runID",&RUNID,"runID/I");
 	simHeader->Branch("factor",&factor,"factor/I");
+	simHeader->Branch("NROW",&NROW,"NROW/I");
+	simHeader->Branch("NCOL",&NCOL,"NCOL/I");
+	simHeader->Branch("CCDNROW",&CCDNROW,"CCDNROW/I");
+	simHeader->Branch("CCDNCOL",&CCDNCOL,"CCDNCOL/I");
+	simHeader->Branch("NBINROW",&NBINROW,"NBINROW/I");
+	simHeader->Branch("NBINCOL",&NBINCOL,"NBINCOL/I");
 	simHeader->Fill();
 
 
