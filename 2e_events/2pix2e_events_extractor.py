@@ -75,10 +75,19 @@ def readconfig(infiles,ccdPrescan,ccdCol,ccdRow,nRow,nCol,binRows,binCols,files)
                 binCols = int(getattr(header, "NBINCOL"))
             except:
                 binCols = 1
+            start = datetime.datetime.strptime(getattr(header,"DATESTART").split(b'\0',1)[0],"%Y-%m-%dT%H:%M:%S")
+            end = datetime.datetime.strptime(getattr(header,"DATEEND").split(b'\0',1)[0],"%Y-%m-%dT%H:%M:%S")
+            readoutTime = end-start
+            #get exposure time
+            try:
+                exposure = int(getattr(header, "EXPOSURE"))
+            except:
+                exposure = 0
+            readoutDays = readoutTime.days + (float(readoutTime.seconds) - exposure)/(24*60*60)
         files[int(getattr(header, "LTANAME"))-1].append(infiles[i])
         print("Adding "+str(infiles[i])+" to module = "+str(int(getattr(header, "LTANAME"))))
 
-    return ccdPrescan,ccdCol,ccdRow,nRow,nCol,binRows,binCols,files
+    return ccdPrescan,ccdCol,ccdRow,nRow,nCol,binRows,binCols,files,readoutDays,exposure
 
 def writeConfig(nmods,modules,data,outfile):
     outfile.cd()
@@ -87,17 +96,19 @@ def writeConfig(nmods,modules,data,outfile):
     config.SetName("config")
     config.Branch('nmods',nmods,'nmods/I')
     config.Branch('module',modules,'module[nmods]/I')
-    config.Branch('1pix2events',data[5],'1pix2events[nmods]/F')
-    config.Branch('1pix2eventsErr',data[6],'1pix2eventsErr[nmods]/F')
     config.Branch('entries',data[0],'entries[nmods]/I')
-    config.Branch('1erate',data[1],'1erate[nmods]/F')
-    config.Branch('1erateErr',data[2],'1erateErr[nmods]/F')
-    config.Branch('1pix2erate',data[3],'1pix2erate[nmods]/F')
-    config.Branch('1pix2erateErr',data[4],'1pix2erateErr[nmods]/F')
+    config.Branch('effexposure',data[1],'effexposure[nmods]/F')
+    config.Branch('1erate',data[2],'1erate[nmods]/F')
+    config.Branch('1erateErr',data[3],'1erateErr[nmods]/F')
+    config.Branch('1pix2erateUL',data[4],'1pix2erateUL[nmods]/F')
+    # config.Branch('1pix2erate',data[4],'1pix2erate[nmods]/F')
+    # config.Branch('1pix2erateErr',data[5],'1pix2erateErr[nmods]/F')
+    # config.Branch('1pix2events',data[6],'1pix2events[nmods]/F')
+    # config.Branch('1pix2eventsErr',data[7],'1pix2eventsErr[nmods]/F')
     # config.Fill()
     return config
 
-def fit1e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, halo1e, masks, hduscut ,files, f, outfile, outfilename, PLOTS):
+def fit1e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, halo1e, masks, hduscut ,files, f, outfile, outfilename, PLOTS, readoutDays, exposure):
 
 
     
@@ -119,7 +130,8 @@ def fit1e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, h
     edgedistY = "min((y-1)*{4}, {2}-(y*{4}))".format(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows) #distance from closest edge, <0 for pixels outside the active area
 
     calPixTree = [TChain("calPixTree") for i in range(0,len(files))]
-    data = [array.array('f',[0,0]) for i in range(0,7)] #entries, 1e- rate, 1e- rateErr, expected 1pix2e- rate, expected 1pix2e- rateErr, expected 1pix2e- events, expected 1pix2e- events uncertainty
+    # data = [array.array('f',[0,0]) for i in range(0,8)] #entries, exposure in gram days,1e- rate, 1e- rateErr, expected 1pix2e- rate, expected 1pix2e- rateErr, expected 1pix2e- events, expected 1pix2e- events uncertainty
+    data = [array.array('f',[0,0]) for i in range(0,5)] #entries, exposure in gram days,1e- rate, 1e- rateErr, 1pix2e- events UL (90%)
     data[0]=array.array('i',[0,0]) #first one is integer!
 
     entries = np.empty((1), dtype="int32"); entries1e = np.empty((1), dtype="float32"); mu = np.empty((1), dtype="float32"); muErr = np.empty((1), dtype="float32"); modules = np.empty((1), dtype="int32"); runs = np.empty((1), dtype="int32"); ohdu = np.empty((1), dtype="int32");
@@ -138,8 +150,6 @@ def fit1e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, h
         #starters for plot
         # regioncuts="x<"+str(xcut)+" && min(distance,edgedist)>="+str(halo)+" && distance1e>"+str(halo1e)+" && (mask & "+str(masks)+")==0"# 
         regioncuts="x<"+str(xcut)+" && min(distance,edgedist)>="+str(halo)+" && (mask & "+str(masks)+")==0"# 
-
-
 
         for iFile in files[I]:
             if True:
@@ -187,14 +197,19 @@ def fit1e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, h
         if PLOTS==True:
             plot(calPixTree, regioncuts, edgedistX, edgedistY,hists, I)
         
+        pixelmass=3.53716875e-06 #grams per pixel
+        
         #to write into config tree of outfile 
         data[0][I]=int(h.GetEntries())
-        data[1][I]=float(s.Parameter(4))
-        data[2][I]=float(s.Error(4))
-        data[3][I]=float((s.Parameter(4)**2)/2)
-        data[4][I]=float(s.Error(4)*s.Parameter(4))
-        data[5][I]=float(h.GetEntries()*(s.Parameter(4)**2)/2)
-        data[6][I]=float(h.GetEntries()*s.Error(4)*s.Parameter(4))
+        data[1][I]=float(h.GetEntries()*pixelmass*(exposure+readoutDays/2)/86400)
+        data[2][I]=float(s.Parameter(4))
+        data[3][I]=float(s.Error(4))
+        fPoiss_cdf = TF1("f","ROOT::Math::poisson_cdf("+str(h.GetEntries()*(s.Parameter(4)**2)/2)+", x)",0,4)
+        data[4][I]=float(fPoiss_cdf.GetX(.1))
+        # data[4][I]=float((s.Parameter(4)**2)/2)
+        # data[5][I]=float(s.Error(4)*s.Parameter(4))
+        # data[6][I]=float(h.GetEntries()*(s.Parameter(4)**2)/2)
+        # data[7][I]=float(h.GetEntries()*s.Error(4)*s.Parameter(4))
 
         c.cd()
         c.Print(outfilename+"_1epeaks.pdf")
@@ -268,7 +283,9 @@ def count2e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut,
         for iFile in files[I]:
             hitSumm.Add(iFile)
         # regioncuts2e="min(distance,edgedist)>="+str(halo)+" && xMin<"+str(xcut)+" && distance1e>"+str(halo1e)+" && e==2 && n<3 && (flag & "+str(masks)+")==0 &&"+hduscut[I]
-        regioncuts2e="min(distance,edgedist)>="+str(halo)+" && xMin<"+str(xcut)+" && e==2 && n<3 && (flag & "+str(masks)+")==0 &&"+hduscut[I]
+        regioncuts2e="min(distance,edgedist)>="+str(halo)+" && xMin<"+str(xcut)+" && e==2 && n==1 && (flag & "+str(masks)+")==0 &&"+hduscut[I]
+        regioncuts2e="min(distance,edgedist)>="+str(halo)+" && xMin<"+str(xcut)+" && e==2 && n==1 && ePix[0]>1.7 && (flag & "+str(masks)+")==0 &&"+hduscut[I]
+        print(regioncuts2e)
         hitSummAux[I] = hitSumm.CopyTree(regioncuts2e)
         f.write(str(regioncuts2e)+"\n")
             
@@ -311,7 +328,7 @@ modules=array.array('i', range(len(files)+1)[1:])
 f = open(outfilename+".txt", "w")
 
 #read config
-ccdPrescan,ccdCol,ccdRow,nRow,nCol,binRows,binCols,files = readconfig(infiles,ccdPrescan,ccdCol,ccdRow,nRow,nCol,binRows,binCols,files)
+ccdPrescan,ccdCol,ccdRow,nRow,nCol,binRows,binCols,files,readoutDays,exposure = readconfig(infiles,ccdPrescan,ccdCol,ccdRow,nRow,nCol,binRows,binCols,files)
 
 #set geometry
 prescanEdge = ccdPrescan + 1 #X of first active pixel
@@ -321,7 +338,8 @@ activeEdgeY = ccdRow/2 #Y of last active pixel
 #set cuts
 hdus=[[],[]]
 hdus[0]=['ohdu=='+hdu for hdu in ['1','2','3','4']] #set hdus to analyze
-hdus[1]=['ohdu=='+hdu for hdu in ['1','2','3','4']] #set hdus to analyze
+# hdus[1]=['ohdu=='+hdu for hdu in ['1','2','3','4']] #set hdus to analyze
+hdus[1]=['ohdu=='+hdu for hdu in ['3','4']] #set hdus to analyze
 hduscut=['('+' || '.join(i)+')' for i in hdus]
 
 #set other cuts and options
@@ -336,14 +354,14 @@ outfile = TFile(outfilename+".root","RECREATE");
 
 
 # #analyse 1e- events
-# calPixTree1e, data = fit1e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, halo1e, masks, hduscut,files, f, outfile, outfilename, PLOTS)
-# calPixTree1e.Print()
-# calPixTree1e.Write()
+calPixTree1e, data = fit1e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, halo1e, masks, hduscut,files, f, outfile, outfilename, PLOTS, readoutDays, exposure)
+calPixTree1e.Print()
+calPixTree1e.Write()
 
 
 # #write config branch
-# config = writeConfig(nmods,modules,data,outfile)
-# config.Fill()
+config = writeConfig(nmods,modules,data,outfile)
+config.Fill()
 
 #count 2e events
 lists = count2e(prescanEdge, activeEdgeX, activeEdgeY, binCols, binRows, halo, xcut, halo1e, masks, hduscut ,modules,files, f)
