@@ -171,39 +171,49 @@ void analyse(vector<vector<double>> &events, int Entries, TTree * tree, int hdu,
 	Enable_and_Set_Branches_Experimental(tree);
 	vector<int> runID1e;  
 	vector<int> ohdu1e;
-	// auto test = TRandom3(0);
-	// test.SetSeed(0);
-	for(int i_event=0;i_event<Entries; i_event++){
-
-		tree->GetEntry(i_event);
-		if(ohdu!=hdu){continue;}
-		
-		events[0].push_back(x);
-		events[1].push_back(y);
-		events[2].push_back(sqrt(pow(x,2)+pow(y,2)));
-
-		runID1e.push_back(runID);
-		ohdu1e.push_back(ohdu);
-	}
-
+	auto test = TRandom3(0);
+	test.SetSeed(0);
 	// for(int i_event=0;i_event<Entries; i_event++){
 
 	// 	tree->GetEntry(i_event);
 	// 	if(ohdu!=hdu){continue;}
-	// 	double  xx= test.Uniform(0,1)*1160.0;
-	// 	events[0].push_back(xx);
+		
+	// 	events[0].push_back(x);
+	// 	events[1].push_back(y);
+	// 	events[2].push_back(sqrt(pow(x,2)+pow(y,2)));
+
 	// 	runID1e.push_back(runID);
 	// 	ohdu1e.push_back(ohdu);
 	// }
-	// test.SetSeed(0);
-	// for(int i_event=0;i_event<Entries; i_event++){
-	// 	if(ohdu!=hdu){continue;}
-	// 	double yy= test.Uniform(0,1)*1160.0;
-	// 	events[1].push_back(yy);
-	// }
-	// for(int i_event=0;i_event<Entries; i_event++){
-	// 	events[2].push_back(sqrt(pow(events[0][i_event],2)+pow(events[1][i_event],2)));
-	// }
+
+	for(int i_event=0;i_event<Entries; i_event++){
+
+		tree->GetEntry(i_event);
+		if(ohdu!=hdu){continue;}
+		for (size_t i = 0; i < 1; i++)
+		{
+			double  xx= test.Uniform(0,1)*116000.0;
+			events[0].push_back(xx);
+		}
+		
+		runID1e.push_back(runID);
+		ohdu1e.push_back(ohdu);
+	}
+	test.SetSeed(0);
+	for(int i_event=0;i_event<Entries; i_event++){
+		if(ohdu!=hdu){continue;}
+		for (size_t i = 0; i < 1; i++)
+		{
+			double yy= test.Uniform(0,1)*116000.0;
+			events[1].push_back(yy);
+		}
+	}
+	for(int i_event=0;i_event<Entries; i_event++){
+		for (size_t i = 0; i < 1; i++)
+		{
+			events[2].push_back(sqrt(pow(events[0][i_event],2)+pow(events[1][i_event],2)));
+		}
+	}
 
 	const int n = events[0].size();
 
@@ -712,8 +722,6 @@ int main(int argc, char* argv[]){
 		//analyse and compare data
 		for (int hdu = 1; hdu < 2; hdu++){
 
-
-
 			// analyse "Theoretical" data (factor 100)
 			vector<vector<double>> THEO(4); //x, y , x**2+y**2, distance entre eventos
 			TTree * t_THEO=nullptr;
@@ -730,13 +738,24 @@ int main(int argc, char* argv[]){
 			int Entries_ON = t_ON -> GetEntries();
 			analyse(ON, Entries_ON, t_ON, hdu , neighbours);
 
+
+			cout << "hey" << endl;
+			cout << THEO[0].size() << endl;
+			cout << THEO[1].size() << endl;
+			cout << THEO[2].size() << endl;
+			cout << THEO[3].size() << endl;
+			cout << ON[0].size() << endl;
+			cout << ON[1].size() << endl;
+			cout << ON[2].size() << endl;
+			cout << ON[3].size() << endl;
 			// perform Kolmogorov test between Experimental and "Theoretical" data
 			kolmogorov(THEO, ON, hdu, outfilename);
+			cout << "hey" << endl;
 
 			// analyse Simulated data and perform Kolmogorov test
-			// for (size_t run = 0; run < nsim-1; run++)
+			for (size_t run = 0; run < nsim-1; run++)
 			// for (size_t run = 0; run < 100-1; run++)
-			for (size_t run = 1; run < 100-1; run++)
+			// for (size_t run = 1; run < 100-1; run++)
 			{
 				vector<vector<double>> OFF(4);
 				TTree * t_OFF=nullptr;
@@ -770,9 +789,6 @@ int main(int argc, char* argv[]){
 				// cout << pvalues3Val << endl;
 				// cout << pvalues4Val << endl;
 				//largest diff
-				
-				
-
 
 				outputFile->cd();
 				
@@ -781,15 +797,12 @@ int main(int argc, char* argv[]){
 				pvalores[0].clear(); pvalores[1].clear(); pvalores[2].clear(); pvalores[3].clear();
 				pvaloresbis[0].clear(); pvaloresbis[1].clear(); pvaloresbis[2].clear(); pvaloresbis[3].clear();
 
-
-			
 			}
 
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			
 			count(largestdiff1Val, largest_diff_sim, 0);
 			count(largestdiff2Val, largest_diff_sim, 1);
 			count(largestdiff3Val, largest_diff_sim, 2);

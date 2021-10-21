@@ -12,17 +12,17 @@ ifeq "$(GCCNEWERTHAN47)" "1"
 else
   CFLAGS += -std=c++0x
 endif
-OBJECTS =  KS_SENSEI.o 
+OBJECTS =  KS_SENSEI_test.o 
 #HEADERS = globalConstants.h
 
-ALL : KS_SENSEI.exe
+ALL : KS_SENSEI_test.exe
 	@echo "Listo!"
 
-KS_SENSEI.exe : $(OBJECTS)
-	$(CPP) $(OBJECTS) -o KS_SENSEI.exe $(LIBS) $(GLIBS) $(CFLAGS)
+KS_SENSEI_test.exe : $(OBJECTS)
+	$(CPP) $(OBJECTS) -o KS_SENSEI_test.exe $(LIBS) $(GLIBS) $(CFLAGS)
 
-KS_SENSEI.o : KS_SENSEI.C $(HEADERS)
-	$(CPP) -c KS_SENSEI.C -o KS_SENSEI.o $(CFLAGS)
+KS_SENSEI_test.o : KS_SENSEI_test.C $(HEADERS)
+	$(CPP) -c KS_SENSEI_test.C -o KS_SENSEI_test.o $(CFLAGS)
 
 clean:
 	rm -f *~ *.o *.exe
