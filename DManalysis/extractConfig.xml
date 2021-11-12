@@ -1,0 +1,65 @@
+<extractConfig>
+
+    <badCols>
+        <cRange hdu="1" x1="8" x2="9" />
+        <cRange hdu="1" x1="2572" x2="2574" />
+        <cRange hdu="1" x1="3059" x2="3066" />
+        <cRange hdu="2" x1="8" x2="9" />
+        <column hdu="2" x="305" />
+        <column hdu="2" x="985" />
+        <cRange hdu="2" x1="1159" x2="1160" />
+        <cRange hdu="2" x1="2143" x2="2144" />
+        <column hdu="2" x="2146" />
+        <cRange hdu="2" x1="2148" x2="2149" />
+        <column hdu="2" x="2536" />
+        <cRange hdu="3" x1="8" x2="9" />
+        <column hdu="3" x="2460" />
+        <column hdu="3" x="2579" />
+        <column hdu="4" x="791" />
+        <cRange hdu="4" x1="2610" x2="2616" />
+        <column hdu="4" x="2618" />
+        <cRange hdu="4" x1="2670" x2="2677" />
+    </badCols>
+    <badPixels>
+        <pixel hdu="1" x="1112" y="49" />
+        <pixel hdu="1" x="2790" y="470" />
+        <pixel hdu="1" x="2797" y="474" />
+        <pixel hdu="2" x="568" y="14" />
+        <pixel hdu="2" x="2556" y="146" />
+        <pixel hdu="2" x="2724" y="281" />
+        <pixel hdu="3" x="915" y="504" />
+        <pixel hdu="3" x="1812" y="180" />
+        <pixel hdu="4" x="105" y="497" />
+    </badPixels>
+
+    <bleedCols>
+    </bleedCols>
+
+    <bleedXEdges>
+        <edge hdu="2" x="1784" />
+    </bleedXEdges>
+
+    <cuts
+        epix="0.7" 
+        bleedX="50" 
+        bleedY="50" 
+	halo="60" 
+	edgeCut="60"    
+        clusterThr="1"
+	clusterCut="20"
+	clusterIgnore="2"
+        />
+
+    <extra
+        looseClustersNoNeighbors="0" 
+        useDiagonalPix="1"
+        saveTracks="1"
+        saveTrackCuts="1"
+        /> 
+
+
+    <systemConfig
+        stackSize="256"
+        hitMaxSize="5000"
+        />
+</extractConfig>

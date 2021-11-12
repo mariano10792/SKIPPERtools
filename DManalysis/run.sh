@@ -1,0 +1,7 @@
+make
+
+for i in {1..1..1}
+do
+./DM.exe /mnt/mariano/MINOSnewfirmware/commissioning_data/minos3/proc_corr_proc_skp_moduleC40_41-ssc16_17-lta20_60_TEMP135K-run1_NROW520_NBINROW1_NCOL3200_NBINCOL1_EXPOSURE72000_CLEAR1800_1_250.fits -m /mnt/mariano/MINOSnewfirmware/commissioning_data/minos3/mask_corr_proc_skp_moduleC40_41-ssc16_17-lta20_60_TEMP135K-run1_NROW520_NBINROW1_NCOL3200_NBINCOL1_EXPOSURE72000_CLEAR1800_1_250.fits -c extractConfig.xml -C /mnt/mariano/MINOSnewfirmware/commissioning_data/minos3/cal_proc_corr_proc_skp_moduleC40_41-ssc16_17-lta20_60_TEMP135K-run1_NROW520_NBINROW1_NCOL3200_NBINCOL1_EXPOSURE72000_CLEAR1800_1_250.xml -n ${i}
+~/tools/skextract/skExtract.exe sim_corr_proc_skp_moduleC40_41-ssc16_17-lta20_60_TEMP135K-run1_NROW520_NBINROW1_NCOL3200_NBINCOL1_EXPOSURE72000_CLEAR1800_1_250_${i}.fits -c extractConfig.xml -C /mnt/mariano/MINOSnewfirmware/commissioning_data/minos3/cal_proc_corr_proc_skp_moduleC40_41-ssc16_17-lta20_60_TEMP135K-run1_NROW520_NBINROW1_NCOL3200_NBINCOL1_EXPOSURE72000_CLEAR1800_1_250.xml
+done

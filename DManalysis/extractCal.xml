@@ -1,0 +1,10 @@
+<!--this is an example of a valid calibration XML file-->
+<extractCal>
+    <calibration>
+        <default gain="200"/>
+        <hdu num="1" gain="211.5"/>
+        <hdu num="2" gain="224"/>
+        <hdu num="3" gain="221"/>
+        <hdu num="4" gain="206.7"/>
+    </calibration>
+</extractCal>
